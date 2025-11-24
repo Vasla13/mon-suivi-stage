@@ -16,9 +16,7 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// -----------------------------------------------------------
-// 🔴 1. COLLE TA CONFIG FIREBASE ICI (REMPLACE LES POINTS)
-// -----------------------------------------------------------
+// 🔴 CONFIG FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
     authDomain: "mon-suivi-stage.firebaseapp.com",
@@ -28,14 +26,8 @@ import {
     appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
     measurementId: "G-GL4HPEBLRW",
   };
-
-// -----------------------------------------------------------
-// 🔴 2. COLLE TON UID ICI (REMPLACE LE TEXTE)
-// -----------------------------------------------------------
 const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2";
-// -----------------------------------------------------------
 
-// Initialisation
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -44,6 +36,7 @@ const provider = new GithubAuthProvider();
 
 let isAdmin = false;
 let allStages = [];
+let myChart = null; // Variable pour stocker le graphique
 
 // --- DARK MODE ---
 const btnTheme = document.getElementById("btnTheme");
@@ -55,18 +48,15 @@ if (localStorage.getItem("theme") === "dark") {
 }
 
 btnTheme.addEventListener("click", () => {
-  if (htmlEl.getAttribute("data-bs-theme") === "dark") {
-    htmlEl.setAttribute("data-bs-theme", "light");
-    btnTheme.innerHTML = '<i class="bi bi-moon-stars-fill"></i>';
-    localStorage.setItem("theme", "light");
-  } else {
-    htmlEl.setAttribute("data-bs-theme", "dark");
-    btnTheme.innerHTML = '<i class="bi bi-sun-fill"></i>';
-    localStorage.setItem("theme", "dark");
-  }
+  const isDark = htmlEl.getAttribute("data-bs-theme") === "dark";
+  htmlEl.setAttribute("data-bs-theme", isDark ? "light" : "dark");
+  btnTheme.innerHTML = isDark
+    ? '<i class="bi bi-moon-stars-fill"></i>'
+    : '<i class="bi bi-sun-fill"></i>';
+  localStorage.setItem("theme", isDark ? "light" : "dark");
 });
 
-// --- GESTION CONNEXION ---
+// --- AUTH ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
     isAdmin = user.uid === ADMIN_UID;
@@ -75,25 +65,25 @@ onAuthStateChanged(auth, (user) => {
     if (user.photoURL)
       document.getElementById("userAvatar").src = user.photoURL;
 
-    const statusBadge = document.getElementById("userStatus");
-    const btnNouveau = document.getElementById("btnNouveau");
+    const badge = document.getElementById("userStatus");
+    const btn = document.getElementById("btnNouveau");
 
     if (isAdmin) {
-      statusBadge.className = "badge bg-primary";
-      statusBadge.innerText = "Admin";
-      btnNouveau.classList.remove("admin-only");
+      badge.className = "badge bg-primary";
+      badge.innerText = "Admin";
+      btn.classList.remove("admin-only");
     } else {
-      statusBadge.className = "badge bg-secondary";
-      statusBadge.innerText = "Invité";
-      btnNouveau.classList.add("admin-only");
+      badge.className = "badge bg-secondary";
+      badge.innerText = "Invité";
+      btn.classList.add("admin-only");
     }
+
     chargerDonnees();
   } else {
     document.getElementById("login-screen").style.display = "flex";
     document.getElementById("app-content").style.display = "none";
   }
 });
-
 document
   .getElementById("btnGithubLogin")
   .addEventListener("click", () =>
@@ -103,11 +93,12 @@ document
   .getElementById("btnLogout")
   .addEventListener("click", () => signOut(auth));
 
-// --- CHARGEMENT ---
+// --- DATA ---
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
-    let stats = { total: 0, attente: 0, entretien: 0, valide: 0 };
+    // On compte aussi les refusés maintenant
+    let stats = { total: 0, attente: 0, entretien: 0, valide: 0, refuse: 0 };
 
     snapshot.forEach((doc) => {
       let data = doc.data();
@@ -118,6 +109,7 @@ function chargerDonnees() {
       if (data.etat === "En attente") stats.attente++;
       if (data.etat === "Entretien") stats.entretien++;
       if (data.etat === "Validé") stats.valide++;
+      if (data.etat === "Refusé") stats.refuse++;
     });
 
     allStages.sort((a, b) => {
@@ -131,6 +123,54 @@ function chargerDonnees() {
     updateStats(stats);
     renderTable(allStages);
     document.getElementById("loading").style.display = "none";
+  });
+}
+
+function updateStats(stats) {
+  // 1. Mise à jour des cartes chiffres
+  const c = document.getElementById("stats-numbers");
+  c.innerHTML = `
+        <div class="col-6 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.7em">TOTAL</small></div></div>
+        <div class="col-6 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.7em">ATTENTE</small></div></div>
+        <div class="col-6"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.7em">ENTR.</small></div></div>
+        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.7em">VALIDÉ</small></div></div>
+    `;
+
+  // 2. Mise à jour du Graphique (Chart.js)
+  const ctx = document.getElementById("statsChart");
+
+  // Si un graphique existe déjà, on le détruit pour le redessiner
+  if (myChart) myChart.destroy();
+
+  // Si on a 0 données, on affiche un donut vide gris
+  let dataChart = [stats.attente, stats.entretien, stats.valide, stats.refuse];
+  let colors = ["#ffc107", "#0dcaf0", "#198754", "#dc3545"]; // Jaune, Bleu, Vert, Rouge
+
+  if (stats.total === 0) {
+    dataChart = [1];
+    colors = ["#e9ecef"]; // Gris
+  }
+
+  myChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Attente", "Entretien", "Validé", "Refusé"],
+      datasets: [
+        {
+          data: dataChart,
+          backgroundColor: colors,
+          borderWidth: 0,
+          hoverOffset: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }, // On cache la légende car les couleurs sont évidentes
+      },
+    },
   });
 }
 
@@ -170,19 +210,11 @@ function renderTable(stagesToDisplay) {
               </div>`
       : `<span class="text-muted small"><i class="bi bi-eye"></i></span>`;
 
-    html += `
-              <tr>
-                  <td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td>
-                  <td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td>
-                  <td>${relanceHtml}</td>
-                  <td class="text-end pe-3">${actionsHtml}</td>
-              </tr>`;
+    html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${relanceHtml}</td><td class="text-end pe-3">${actionsHtml}</td></tr>`;
   });
-
   tableBody.innerHTML = stagesToDisplay.length
     ? html
     : `<tr><td colspan="4" class="text-center py-4 text-muted">Aucun résultat.</td></tr>`;
-
   if (isAdmin) {
     document
       .querySelectorAll(".btn-delete")
@@ -193,16 +225,14 @@ function renderTable(stagesToDisplay) {
       );
     document.querySelectorAll(".btn-edit").forEach((btn) =>
       btn.addEventListener("click", (e) => {
-        const stage = allStages.find(
-          (s) => s.id === e.currentTarget.dataset.id
-        );
-        editStage(stage);
+        const s = allStages.find((x) => x.id === e.currentTarget.dataset.id);
+        editStage(s);
       })
     );
   }
 }
 
-// --- RECHERCHE ET FILTRES ---
+// --- SEARCH & EXPORT ---
 const searchInput = document.getElementById("searchInput");
 const filterBtns = document.querySelectorAll(".filter-btn");
 let currentFilter = "all";
@@ -210,7 +240,6 @@ let currentFilter = "all";
 searchInput.addEventListener("input", (e) =>
   filtrerDonnees(e.target.value, currentFilter)
 );
-
 filterBtns.forEach((btn) => {
   btn.addEventListener("click", () => {
     filterBtns.forEach((b) => b.classList.remove("active"));
@@ -219,7 +248,6 @@ filterBtns.forEach((btn) => {
     filtrerDonnees(searchInput.value, currentFilter);
   });
 });
-
 function filtrerDonnees(text, status) {
   const lowerText = text.toLowerCase();
   const filtered = allStages.filter((stage) => {
@@ -231,8 +259,6 @@ function filtrerDonnees(text, status) {
   });
   renderTable(filtered);
 }
-
-// --- EXPORT CSV ---
 document.getElementById("btnExport").addEventListener("click", () => {
   if (allStages.length === 0) return alert("Rien à exporter !");
   let csvContent =
@@ -259,7 +285,7 @@ document.getElementById("btnExport").addEventListener("click", () => {
   document.body.removeChild(link);
 });
 
-// --- CRUD & HELPERS ---
+// --- CRUD ---
 document.getElementById("stageForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
@@ -281,7 +307,6 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     alert(err.message);
   }
 });
-
 async function deleteStage(id) {
   if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
 }
@@ -297,10 +322,6 @@ function editStage(s) {
   document.getElementById("form-title").innerText = "Modifier";
   window.showForm();
 }
-function updateStats(stats) {
-  const c = document.getElementById("stats-container");
-  c.innerHTML = `<div class="col-3"><div class="p-2 bg-primary text-white rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.total}</h5><small style="font-size:0.7em">TOTAL</small></div></div><div class="col-3"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.attente}</h5><small style="font-size:0.7em">ATTENTE</small></div></div><div class="col-3"><div class="p-2 bg-info text-dark rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.entretien}</h5><small style="font-size:0.7em">ENTR.</small></div></div><div class="col-3"><div class="p-2 bg-success text-white rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.valide}</h5><small style="font-size:0.7em">VALIDÉ</small></div></div>`;
-}
 document.getElementById("dateEnvoi").addEventListener("change", function () {
   if (this.value) {
     const d = new Date(this.value);
@@ -310,8 +331,6 @@ document.getElementById("dateEnvoi").addEventListener("change", function () {
       .split("T")[0];
   }
 });
-
-// Exposer les fonctions pour le HTML
 window.showForm = () => {
   document.getElementById("form-card").style.display = "block";
   document.getElementById("form-title").innerText = "Ajouter";
