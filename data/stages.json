@@ -4,9 +4,10 @@
     "entreprise": "Collectivité européenne d’Alsace",
     "poste": "stage ",
     "etat": "En attente",
-    "dateDebut": "2025-11-20",
+    "dateDebut": "",
     "notes": "",
     "dateRelance": "",
-    "lien": "https://www.alsace.eu/"
+    "lien": "https://www.alsace.eu/",
+    "dateEnvoi": "2025-11-20"
   }
 ]
