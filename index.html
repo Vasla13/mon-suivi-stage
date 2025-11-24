@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Suivi Stage Master</title>
+    <title>Suivi Stage Pro</title>
 
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
@@ -15,6 +15,7 @@
     />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
       #login-screen {
         position: fixed;
@@ -44,7 +45,7 @@
     </style>
   </head>
   <body>
-    <!-- 🔒 ÉCRAN DE LOGIN -->
+    <!-- LOGIN -->
     <div id="login-screen">
       <div
         class="card p-4 shadow-lg text-center"
@@ -53,25 +54,22 @@
         <h1 class="mb-3">🌍</h1>
         <h4 class="mb-4">Hub de Stage</h4>
 
-        <!-- Bouton Admin -->
         <button id="btnGithubLogin" class="btn btn-primary btn-lg w-100 mb-2">
           <i class="bi bi-github me-2"></i> Connexion Admin (GitHub)
         </button>
 
-        <!-- NOUVEAU : Bouton Invité -->
         <button id="btnGuestLogin" class="btn btn-outline-secondary w-100 mb-3">
           <i class="bi bi-person me-2"></i> Continuer en tant qu'invité
         </button>
 
         <div class="alert alert-light border small text-muted mt-2">
-          Accès sécurisé. Les invités sont en mode
-          <strong>lecture seule</strong>.
+          Accès sécurisé. Les invités sont en mode lecture seule.
         </div>
         <div id="login-error" class="text-danger mt-2 fw-bold small"></div>
       </div>
     </div>
 
-    <!-- 📱 CONTENU PRINCIPAL -->
+    <!-- APP CONTENT -->
     <div id="app-content">
       <div class="container mt-4 mb-5">
         <!-- HEADER -->
@@ -79,7 +77,7 @@
           <div class="d-flex align-items-center">
             <img
               id="userAvatar"
-              src="https://ui-avatars.com/api/?name=Invité&background=random"
+              src=""
               class="rounded-circle me-2 border border-2 border-secondary shadow-sm"
               style="width: 40px; height: 40px"
             />
@@ -94,31 +92,19 @@
             </div>
           </div>
           <div class="d-flex gap-2">
-            <button
-              id="btnTheme"
-              class="btn btn-outline-secondary btn-sm"
-              title="Thème"
-            >
+            <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-moon-stars-fill"></i>
             </button>
-            <button
-              id="btnExport"
-              class="btn btn-outline-success btn-sm"
-              title="Excel"
-            >
+            <button id="btnExport" class="btn btn-outline-success btn-sm">
               <i class="bi bi-file-earmark-spreadsheet-fill"></i>
             </button>
-            <button
-              id="btnLogout"
-              class="btn btn-outline-danger btn-sm"
-              title="Sortir"
-            >
+            <button id="btnLogout" class="btn btn-outline-danger btn-sm">
               <i class="bi bi-box-arrow-right"></i>
             </button>
           </div>
         </div>
 
-        <!-- STATS & GRAPHIQUE -->
+        <!-- STATS -->
         <div class="row mb-4 align-items-center justify-content-center">
           <div class="col-md-3 mb-3 mb-md-0">
             <div class="card shadow-sm p-2">
@@ -132,14 +118,13 @@
           </div>
         </div>
 
-        <!-- BARRE D'OUTILS -->
+        <!-- OUTILS -->
         <div class="row g-2 mb-3 align-items-center">
           <div class="col-md-4">
             <div class="input-group">
               <span class="input-group-text bg-body"
-                ><i class="bi bi-search"></i
-              ></span>
-              <input
+                ><i class="bi bi-search"></i></span
+              ><input
                 type="text"
                 id="searchInput"
                 class="form-control"
@@ -197,7 +182,7 @@
           </div>
         </div>
 
-        <!-- FORMULAIRE (Caché par défaut) -->
+        <!-- FORMULAIRE -->
         <div id="form-card" class="card shadow mb-4" style="display: none">
           <div
             class="card-header bg-primary text-white d-flex justify-content-between py-2 align-items-center"
@@ -238,19 +223,18 @@
                   type="url"
                   id="lien"
                   class="form-control form-control-sm"
-                  placeholder="Lien de l'annonce"
+                  placeholder="Lien annonce"
                 />
               </div>
               <div class="mb-2">
                 <div class="input-group input-group-sm">
                   <span class="input-group-text text-primary"
-                    ><i class="bi bi-envelope-at-fill"></i
-                  ></span>
-                  <input
+                    ><i class="bi bi-envelope-at-fill"></i></span
+                  ><input
                     type="url"
                     id="lienMail"
                     class="form-control"
-                    placeholder="Lien du mail"
+                    placeholder="Lien mail"
                   />
                 </div>
               </div>
@@ -332,8 +316,9 @@
               <tbody id="stages-table-body"></tbody>
             </table>
           </div>
-          <div id="loading" class="text-center p-5 text-muted">
-            Chargement...
+          <!-- Spinner de chargement -->
+          <div id="loading" class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
           </div>
         </div>
       </div>

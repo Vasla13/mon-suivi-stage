@@ -1,7 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+// 1. Import de signInAnonymously AJOUTÉ
 import {
   getAuth,
   signInWithPopup,
+  signInAnonymously,
   GithubAuthProvider,
   signOut,
   onAuthStateChanged,
@@ -36,7 +38,7 @@ const provider = new GithubAuthProvider();
 
 let isAdmin = false;
 let allStages = [];
-let filteredStages = []; // Pour la recherche
+let filteredStages = [];
 let myChart = null;
 
 // --- DARK MODE ---
@@ -61,18 +63,23 @@ onAuthStateChanged(auth, (user) => {
     isAdmin = user.uid === ADMIN_UID;
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("app-content").style.display = "block";
+
     if (user.photoURL)
       document.getElementById("userAvatar").src = user.photoURL;
+    else
+      document.getElementById("userAvatar").src =
+        "https://ui-avatars.com/api/?name=Invité&background=random"; // Avatar pour invité
 
     const badge = document.getElementById("userStatus");
     const btn = document.getElementById("btnNouveau");
+
     if (isAdmin) {
       badge.className = "badge bg-primary";
       badge.innerText = "Admin";
       btn.classList.remove("admin-only");
     } else {
       badge.className = "badge bg-secondary";
-      badge.innerText = "Invité";
+      badge.innerText = "Invité (Lecture)";
       btn.classList.add("admin-only");
     }
     chargerDonnees();
@@ -81,14 +88,26 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById("app-content").style.display = "none";
   }
 });
+
+// CONNEXION GITHUB
 document
   .getElementById("btnGithubLogin")
-  .addEventListener("click", () => signInWithPopup(auth, provider));
+  .addEventListener("click", () =>
+    signInWithPopup(auth, provider).catch((e) => alert(e.message))
+  );
+
+// CONNEXION INVITÉ (C'était manquant !)
+document
+  .getElementById("btnGuestLogin")
+  .addEventListener("click", () =>
+    signInAnonymously(auth).catch((e) => alert(e.message))
+  );
+
 document
   .getElementById("btnLogout")
   .addEventListener("click", () => signOut(auth));
 
-// --- UTILITAIRE JOURS ---
+// --- UTILITAIRES ---
 function getDaysDiff(dateString) {
   if (!dateString) return 0;
   const date = new Date(dateString);
@@ -97,8 +116,9 @@ function getDaysDiff(dateString) {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
-// --- CHARGEMENT & AUTO-REFUS ---
+// --- DATA ---
 function chargerDonnees() {
+  // On cache le chargement dès qu'on reçoit des données
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
     let stats = {
@@ -114,7 +134,6 @@ function chargerDonnees() {
       let data = docSnapshot.data();
       data.id = docSnapshot.id;
 
-      // Auto-refus 21 jours
       if (
         isAdmin &&
         (data.etat === "En attente" || data.etat === "Suite Entretien") &&
@@ -139,7 +158,6 @@ function chargerDonnees() {
       if (data.etat === "Refusé") stats.refuse++;
     });
 
-    // Tri intelligent
     allStages.sort((a, b) => {
       const isPrioA = a.etat === "Entretien" || a.etat === "Suite Entretien";
       const isPrioB = b.etat === "Entretien" || b.etat === "Suite Entretien";
@@ -150,20 +168,17 @@ function chargerDonnees() {
       return 0;
     });
 
+    // Masquer le chargement ici
+    document.getElementById("loading").style.display = "none";
+
     updateStats(stats);
-    applyFilters(); // Applique la recherche actuelle
+    applyFilters();
   });
 }
 
 function updateStats(stats) {
   const c = document.getElementById("stats-numbers");
-  c.innerHTML = `
-        <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
-        <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
-        <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
-        <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div>
-        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
-    `;
+  c.innerHTML = `<div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div><div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div><div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>`;
   if (myChart) myChart.destroy();
   const ctx = document.getElementById("statsChart");
   let data = [
@@ -200,7 +215,6 @@ function updateStats(stats) {
   });
 }
 
-// --- FILTRES ---
 const searchInput = document.getElementById("searchInput");
 const filterBtns = document.querySelectorAll(".filter-btn");
 let currentStatusFilter = "all";
@@ -228,7 +242,6 @@ function applyFilters() {
   renderTable(filteredStages);
 }
 
-// --- RENDER TABLEAU ---
 function renderTable(stages) {
   const tbody = document.getElementById("stages-table-body");
   const today = new Date().toISOString().split("T")[0];
@@ -236,8 +249,6 @@ function renderTable(stages) {
 
   stages.forEach((stage) => {
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
-
-    // Logique Date
     if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
       let daysCounter = "";
       if (stage.dateEnvoi) {
@@ -288,43 +299,43 @@ function renderTable(stages) {
 
     html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${links}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actions}</td></tr>`;
   });
+
   tbody.innerHTML =
     html ||
     '<tr><td colspan="4" class="text-center py-4 text-muted">Aucun résultat.</td></tr>';
 }
 
-// --- EXPORT CSV ---
 document.getElementById("btnExport").addEventListener("click", () => {
   if (allStages.length === 0) return alert("Rien à exporter !");
-  let csv =
+  let csvContent =
     "data:text/csv;charset=utf-8,\uFEFFEntreprise;Poste;Etat;Date Envoi;Date Relance;Date Retour;Lien;Mail;Notes\n";
-  allStages.forEach((r) => {
-    const c = (t) => {
-      if (!t) return "";
-      return '"' + t.toString().replace(/"/g, '""').replace(/\n/g, " ") + '"';
+  allStages.forEach((row) => {
+    const clean = (txt) => {
+      if (!txt) return "";
+      return '"' + txt.toString().replace(/"/g, '""').replace(/\n/g, " ") + '"';
     };
-    csv +=
-      [
-        c(r.entreprise),
-        c(r.poste),
-        c(r.etat),
-        c(r.dateEnvoi),
-        c(r.dateRelance),
-        c(r.dateStatut),
-        c(r.lien),
-        c(r.lienMail),
-        c(r.notes),
-      ].join(";") + "\n";
+    const ligne = [
+      clean(row.entreprise),
+      clean(row.poste),
+      clean(row.etat),
+      clean(row.dateEnvoi),
+      clean(row.dateRelance),
+      clean(row.dateStatut),
+      clean(row.lien),
+      clean(row.lienMail),
+      clean(row.notes),
+    ].join(";");
+    csvContent += ligne + "\n";
   });
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
-  link.setAttribute("href", encodeURI(csv));
+  link.setAttribute("href", encodedUri);
   link.setAttribute("download", "mes_stages.csv");
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 });
 
-// --- CRUD ---
 document.getElementById("stageForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
@@ -341,14 +352,16 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     notes: document.getElementById("notes").value,
   };
   try {
-    if (docId) await updateDoc(doc(db, "stages", docId), stageData);
-    else await addDoc(stagesCollection, stageData);
+    if (docId) {
+      await updateDoc(doc(db, "stages", docId), stageData);
+    } else {
+      await addDoc(stagesCollection, stageData);
+    }
     window.hideForm();
-  } catch (e) {
-    alert(e.message);
+  } catch (err) {
+    alert("Erreur : " + err.message);
   }
 });
-
 window.deleteStage = async (id) => {
   if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
 };
@@ -369,15 +382,6 @@ window.editStage = (id) => {
   document.getElementById("form-card").style.display = "block";
   window.scrollTo(0, 0);
 };
-window.showForm = () => {
-  document.getElementById("form-card").style.display = "block";
-  document.getElementById("form-title").innerText = "Ajouter";
-  document.getElementById("docId").value = "";
-  document.getElementById("stageForm").reset();
-  window.scrollTo(0, 0);
-};
-window.hideForm = () =>
-  (document.getElementById("form-card").style.display = "none");
 document.getElementById("dateEnvoi").addEventListener("change", function () {
   if (this.value) {
     const d = new Date(this.value);
@@ -387,3 +391,12 @@ document.getElementById("dateEnvoi").addEventListener("change", function () {
       .split("T")[0];
   }
 });
+window.showForm = () => {
+  document.getElementById("form-card").style.display = "block";
+  document.getElementById("form-title").innerText = "Ajouter";
+  document.getElementById("docId").value = "";
+  document.getElementById("stageForm").reset();
+  window.scrollTo(0, 0);
+};
+window.hideForm = () =>
+  (document.getElementById("form-card").style.display = "none");
