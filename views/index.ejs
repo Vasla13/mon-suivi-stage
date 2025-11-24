@@ -15,32 +15,28 @@
         <div class="col-md-3">
             <div class="card text-center text-white bg-primary mb-2">
                 <div class="card-body py-2">
-                    <h5><%= stats.total %></h5>
-                    <small>Total Candidatures</small>
+                    <h5><%= stats.total %></h5><small>Total Candidatures</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-center bg-white border-warning mb-2">
                 <div class="card-body py-2 text-warning">
-                    <h5 class="fw-bold"><%= stats.attente %></h5>
-                    <small>En attente</small>
+                    <h5 class="fw-bold"><%= stats.attente %></h5><small>En attente</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-center text-white bg-info mb-2">
                 <div class="card-body py-2">
-                    <h5><%= stats.entretien %></h5>
-                    <small>Entretiens</small>
+                    <h5><%= stats.entretien %></h5><small>Entretiens</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card text-center text-white bg-success mb-2">
                 <div class="card-body py-2">
-                    <h5><%= stats.valide %></h5>
-                    <small>Validés</small>
+                    <h5><%= stats.valide %></h5><small>Validés</small>
                 </div>
             </div>
         </div>
@@ -48,7 +44,7 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <form action="/" method="GET" class="d-flex" style="max-width: 400px;">
-            <input class="form-control me-2" type="search" name="q" placeholder="Rechercher une entreprise..." value="<%= search || '' %>">
+            <input class="form-control me-2" type="search" name="q" placeholder="Rechercher..." value="<%= search || '' %>">
             <button class="btn btn-outline-dark" type="submit"><i class="bi bi-search"></i></button>
             <% if(search) { %> <a href="/" class="btn btn-link text-muted">Annuler</a> <% } %>
         </form>
@@ -67,9 +63,9 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-secondary text-uppercase small">
                             <tr>
-                                <th class="ps-4">Entreprise / Stage</th>
+                                <th class="ps-4">Entreprise / Envoyé le</th>
                                 <th>État</th>
-                                <th>Prochaine Action (Relance)</th>
+                                <th>Relance (J+7)</th>
                                 <th>Lien</th>
                                 <th class="text-end pe-4">Actions</th>
                             </tr>
@@ -80,46 +76,31 @@
                                     <td class="ps-4">
                                         <div class="fw-bold text-dark"><%= stage.entreprise %></div>
                                         <small class="text-muted"><%= stage.poste %></small>
+                                        <% if (stage.dateEnvoi) { %>
+                                            <div style="font-size: 0.75rem" class="text-secondary mt-1">
+                                                <i class="bi bi-send"></i> Envoyé le : <%= stage.dateEnvoi %>
+                                            </div>
+                                        <% } %>
                                     </td>
                                     
                                     <td>
-                                        <% if(stage.etat === 'Validé') { %>
-                                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Validé</span>
-                                        <% } else if(stage.etat === 'Refusé') { %>
-                                            <span class="badge bg-danger">Refusé</span>
-                                        <% } else if(stage.etat === 'Entretien') { %>
-                                            <span class="badge bg-info text-dark">Entretien</span>
-                                        <% } else { %>
-                                            <span class="badge bg-warning text-dark">En attente</span>
-                                        <% } %>
+                                        <% if(stage.etat === 'Validé') { %> <span class="badge bg-success">Validé</span>
+                                        <% } else if(stage.etat === 'Refusé') { %> <span class="badge bg-danger">Refusé</span>
+                                        <% } else if(stage.etat === 'Entretien') { %> <span class="badge bg-info text-dark">Entretien</span>
+                                        <% } else { %> <span class="badge bg-warning text-dark">En attente</span> <% } %>
                                     </td>
                                     
                                     <td>
                                         <% if (stage.etat === 'Validé' || stage.etat === 'Refusé') { %>
                                             <span class="text-muted small">-</span>
                                         <% } else if (stage.dateRelance) { %>
-                                            
                                             <% if (stage.dateRelance < today) { %>
-                                                <div class="d-flex align-items-center text-danger fw-bold">
-                                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                                    <div>
-                                                        <span><%= stage.dateRelance %></span><br>
-                                                        <small style="font-size: 0.7em;">EN RETARD !</small>
-                                                    </div>
-                                                </div>
-
+                                                <div class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> <%= stage.dateRelance %></div>
                                             <% } else if (stage.dateRelance === today) { %>
-                                                <div class="d-flex align-items-center text-warning fw-bold p-1 bg-dark rounded border border-warning" style="width:fit-content">
-                                                    <i class="bi bi-bell-fill me-2"></i>
-                                                    <div>
-                                                        <span>AUJOURD'HUI</span>
-                                                    </div>
-                                                </div>
-
+                                                <div class="text-warning fw-bold bg-dark rounded px-2"><i class="bi bi-bell-fill"></i> AUJOURD'HUI</div>
                                             <% } else { %>
                                                 <span class="text-muted"><i class="bi bi-calendar"></i> <%= stage.dateRelance %></span>
                                             <% } %>
-
                                         <% } else { %>
                                             <span class="text-muted small">Non définie</span>
                                         <% } %>
@@ -127,16 +108,14 @@
 
                                     <td>
                                         <% if (stage.lien) { %>
-                                            <a href="<%= stage.lien %>" target="_blank" class="btn btn-sm btn-light border text-primary">
-                                                <i class="bi bi-link-45deg"></i>
-                                            </a>
+                                            <a href="<%= stage.lien %>" target="_blank" class="btn btn-sm btn-light border text-primary"><i class="bi bi-link-45deg"></i></a>
                                         <% } %>
                                     </td>
 
                                     <td class="text-end pe-4">
                                         <a href="/edit/<%= stage.id %>" class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-pencil"></i></a>
                                         <form action="/stages/<%= stage.id %>?_method=DELETE" method="POST" style="display:inline;">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Sûr ?')"><i class="bi bi-trash"></i></button>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ?')"><i class="bi bi-trash"></i></button>
                                         </form>
                                     </td>
                                 </tr>

@@ -35,6 +35,18 @@
 
                 <hr class="my-4 text-muted">
 
+                <div class="row mb-3 p-3 bg-light rounded border">
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label text-secondary">📧 Date d'envoi du mail</label>
+                        <input type="date" name="dateEnvoi" id="dateEnvoi" class="form-control" value="<%= stage ? stage.dateEnvoi : '' %>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-primary">📅 Date de Relance (+7j)</label>
+                        <input type="date" name="dateRelance" id="dateRelance" class="form-control border-primary" value="<%= stage ? stage.dateRelance : '' %>">
+                        <div class="form-text small text-primary">Calcul automatique</div>
+                    </div>
+                </div>
+
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label">État</label>
@@ -46,15 +58,9 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-bold text-primary">📅 Date de Relance</label>
-                        <input type="date" name="dateRelance" class="form-control border-primary" value="<%= stage ? stage.dateRelance : '' %>">
-                        <div class="form-text small text-primary">Laisse vide si pas nécessaire.</div>
+                        <label class="form-label">Date début stage (Optionnel)</label>
+                        <input type="date" name="dateDebut" class="form-control" value="<%= stage ? stage.dateDebut : '' %>">
                     </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Date début stage (Optionnel)</label>
-                    <input type="date" name="dateDebut" class="form-control" value="<%= stage ? stage.dateDebut : '' %>">
                 </div>
 
                 <div class="mb-4">
@@ -69,6 +75,28 @@
         </div>
     </div>
 </div>
+
+<script>
+    const inputEnvoi = document.getElementById('dateEnvoi');
+    const inputRelance = document.getElementById('dateRelance');
+
+    // Quand on change la date d'envoi...
+    inputEnvoi.addEventListener('change', function() {
+        const dateStr = inputEnvoi.value;
+        if(dateStr) {
+            const date = new Date(dateStr);
+            // On ajoute 7 jours
+            date.setDate(date.getDate() + 7);
+            
+            // On formate en YYYY-MM-DD pour que l'input comprenne
+            const jour = String(date.getDate()).padStart(2, '0');
+            const mois = String(date.getMonth() + 1).padStart(2, '0'); // Janvier = 0
+            const annee = date.getFullYear();
+            
+            inputRelance.value = `${annee}-${mois}-${jour}`;
+        }
+    });
+</script>
 
 </body>
 </html>
