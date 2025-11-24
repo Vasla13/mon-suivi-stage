@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Suivi de Stage</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📋 Mon Suivi de Stage</h1>
+        <a href="/nouveau" class="btn btn-primary btn-lg">+ Ajouter un stage</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <% if (stages.length === 0) { %>
+                <p class="text-center text-muted">Aucun stage enregistré pour le moment.</p>
+            <% } else { %>
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Entreprise</th>
+                            <th>Poste</th>
+                            <th>État</th>
+                            <th>Date début</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% stages.forEach(stage => { %>
+                            <tr>
+                                <td class="fw-bold"><%= stage.entreprise %></td>
+                                <td><%= stage.poste %></td>
+                                <td>
+                                    <span class="badge 
+                                        <%= stage.etat === 'Validé' ? 'bg-success' : 
+                                           (stage.etat === 'Refusé' ? 'bg-danger' : 'bg-warning') %>">
+                                        <%= stage.etat %>
+                                    </span>
+                                </td>
+                                <td><%= stage.dateDebut %></td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="/edit/<%= stage.id %>" class="btn btn-sm btn-outline-primary">Modifier</a>
+                                        <form action="/stages/<%= stage.id %>?_method=DELETE" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce stage ?')">X</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
