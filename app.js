@@ -1,5 +1,4 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-// 1. Import de signInAnonymously AJOUTÉ
 import {
   getAuth,
   signInWithPopup,
@@ -18,7 +17,9 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔴 CONFIGURATION
+// ==========================================
+// 🔴 CONFIGURATION FIREBASE & UID
+// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
   authDomain: "mon-suivi-stage.firebaseapp.com",
@@ -28,7 +29,9 @@ const firebaseConfig = {
   appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
   measurementId: "G-GL4HPEBLRW",
 };
+
 const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2";
+// ==========================================
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -68,7 +71,7 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById("userAvatar").src = user.photoURL;
     else
       document.getElementById("userAvatar").src =
-        "https://ui-avatars.com/api/?name=Invité&background=random"; // Avatar pour invité
+        "https://ui-avatars.com/api/?name=Invité&background=random";
 
     const badge = document.getElementById("userStatus");
     const btn = document.getElementById("btnNouveau");
@@ -89,20 +92,16 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// CONNEXION GITHUB
 document
   .getElementById("btnGithubLogin")
   .addEventListener("click", () =>
     signInWithPopup(auth, provider).catch((e) => alert(e.message))
   );
-
-// CONNEXION INVITÉ (C'était manquant !)
 document
   .getElementById("btnGuestLogin")
   .addEventListener("click", () =>
     signInAnonymously(auth).catch((e) => alert(e.message))
   );
-
 document
   .getElementById("btnLogout")
   .addEventListener("click", () => signOut(auth));
@@ -118,7 +117,6 @@ function getDaysDiff(dateString) {
 
 // --- DATA ---
 function chargerDonnees() {
-  // On cache le chargement dès qu'on reçoit des données
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
     let stats = {
@@ -168,9 +166,7 @@ function chargerDonnees() {
       return 0;
     });
 
-    // Masquer le chargement ici
     document.getElementById("loading").style.display = "none";
-
     updateStats(stats);
     applyFilters();
   });
@@ -178,7 +174,13 @@ function chargerDonnees() {
 
 function updateStats(stats) {
   const c = document.getElementById("stats-numbers");
-  c.innerHTML = `<div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div><div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div><div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>`;
+  c.innerHTML = `
+        <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
+        <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div>
+        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
+    `;
   if (myChart) myChart.destroy();
   const ctx = document.getElementById("statsChart");
   let data = [
@@ -249,6 +251,7 @@ function renderTable(stages) {
 
   stages.forEach((stage) => {
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
+
     if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
       let daysCounter = "";
       if (stage.dateEnvoi) {
@@ -297,7 +300,25 @@ function renderTable(stages) {
       ? `<div class="btn-group"><button class="btn btn-sm btn-outline-secondary btn-edit" onclick="editStage('${stage.id}')"><i class="bi bi-pencil-fill"></i></button><button class="btn btn-sm btn-outline-danger btn-delete" onclick="deleteStage('${stage.id}')"><i class="bi bi-trash-fill"></i></button></div>`
       : "";
 
-    html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${links}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actions}</td></tr>`;
+    // LOGO AUTOMATIQUE
+    const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      stage.entreprise
+    )}&background=random&color=fff&size=40&rounded=true&bold=true&font-size=0.5`;
+
+    html += `<tr>
+            <td class="ps-3">
+                <div class="d-flex align-items-center">
+                    <img src="${logoUrl}" class="me-3 shadow-sm" width="40" height="40" alt="Logo" style="border-radius: 8px;">
+                    <div>
+                        <div class="fw-bold text-body">${stage.entreprise} ${links}</div>
+                        <div class="small text-muted">${stage.poste}</div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td>
+            <td>${dateHtml}</td>
+            <td class="text-end pe-3">${actions}</td>
+          </tr>`;
   });
 
   tbody.innerHTML =
