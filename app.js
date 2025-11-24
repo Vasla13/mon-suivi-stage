@@ -17,7 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ==========================================
-// 🔴 CONFIGURATION FIREBASE & UID
+// 🔴 CONFIGURATION FIREBASE
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
@@ -103,6 +103,31 @@ function getDaysDiff(dateString) {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
+// --- NOUVEAU : FONCTION POUR VALIDER UNE RELANCE ---
+window.triggerRelance = async (id) => {
+  if (!isAdmin) return;
+  const today = new Date().toISOString().split("T")[0];
+
+  // On demande la date (par défaut aujourd'hui)
+  const dateAction = prompt("À quelle date as-tu fait cette relance ?", today);
+
+  if (dateAction) {
+    // Calcul de la prochaine date (J+7)
+    const d = new Date(dateAction);
+    d.setDate(d.getDate() + 7);
+    const nextDate = d.toISOString().split("T")[0];
+
+    try {
+      await updateDoc(doc(db, "stages", id), {
+        dateDerniereRelance: dateAction, // On sauvegarde l'historique
+        dateRelance: nextDate, // On met à jour la prochaine
+      });
+    } catch (e) {
+      alert("Erreur : " + e.message);
+    }
+  }
+};
+
 // --- DATA & AUTO-REFUS ---
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
@@ -117,12 +142,10 @@ function chargerDonnees() {
     };
 
     snapshot.forEach((docSnapshot) => {
-      // Renommé pour éviter confusion avec 'doc' de updateDoc
       let data = docSnapshot.data();
       data.id = docSnapshot.id;
 
-      // --- ⚡ LOGIQUE AUTO-REFUS 21 JOURS ⚡ ---
-      // Si Admin connecté + Statut Attente/Suite + Date envoi > 21 jours
+      // --- LOGIQUE AUTO-REFUS 21 JOURS ---
       if (
         isAdmin &&
         (data.etat === "En attente" || data.etat === "Suite Entretien") &&
@@ -130,18 +153,14 @@ function chargerDonnees() {
       ) {
         const daysElapsed = getDaysDiff(data.dateEnvoi);
         if (daysElapsed > 21) {
-          // On met à jour directement dans la base
           updateDoc(doc(db, "stages", data.id), {
             etat: "Refusé",
             notes:
-              (data.notes || "") +
-              " \n[Auto] Refusé car sans réponse depuis > 21 jours.",
+              (data.notes || "") + " \n[Auto] Refusé (Sans réponse > 21j).",
           });
-          // On met à jour l'objet local pour l'affichage immédiat
           data.etat = "Refusé";
         }
       }
-      // -------------------------------------------
 
       allStages.push(data);
       stats.total++;
@@ -221,10 +240,10 @@ function renderTable(stagesToDisplay) {
   stagesToDisplay.forEach((stage) => {
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
 
-    // Si En attente OU Suite Entretien : On affiche Relance + Compteur Jours
+    // --- LOGIQUE DATES ---
     if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
+      // Partie 1 : Compteur jours depuis envoi
       let daysCounter = "";
-      // Calcul des jours écoulés depuis l'envoi
       if (stage.dateEnvoi) {
         const days = getDaysDiff(stage.dateEnvoi);
         const color =
@@ -236,15 +255,32 @@ function renderTable(stagesToDisplay) {
         daysCounter = `<span class="${color} small ms-1">(${days}j)</span>`;
       }
 
+      // Partie 2 : Date de Relance (Interactive)
       if (stage.dateRelance) {
-        if (stage.dateRelance < today)
-          dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance} ${daysCounter}</div>`;
-        else if (stage.dateRelance === today)
-          dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span> ${daysCounter}`;
-        else
-          dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance} ${daysCounter}</span>`;
+        let relanceContent = "";
+        // Est-ce que la date est arrivée ou passée ?
+        const isDue = stage.dateRelance <= today;
+
+        if (isDue) {
+          // C'est le moment ! Bouton rouge ou orange cliquable
+          if (isAdmin) {
+            relanceContent = `<button onclick="triggerRelance('${stage.id}')" class="btn btn-sm p-0 text-decoration-none text-danger fw-bold border-0 bg-transparent" title="Cliquer pour valider la relance"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance}</button>`;
+          } else {
+            relanceContent = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance}</span>`;
+          }
+        } else {
+          // Futur
+          relanceContent = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance}</span>`;
+        }
+
+        dateHtml = `${relanceContent} ${daysCounter}`;
       } else if (daysCounter) {
         dateHtml = `<span class="text-muted small">En cours ${daysCounter}</span>`;
+      }
+
+      // Partie 3 : Dernière Relance (Historique)
+      if (stage.dateDerniereRelance) {
+        dateHtml += `<div class="text-muted small fst-italic" style="font-size:0.75em; margin-top:2px;">Dernière: ${stage.dateDerniereRelance}</div>`;
       }
     } else {
       // Sinon (Validé/Refusé/Entretien) -> Date Statut
@@ -326,7 +362,7 @@ document.getElementById("btnExport").addEventListener("click", () => {
   if (allStages.length === 0) return alert("Rien à exporter !");
   let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
   const sep = ";";
-  csvContent += `Entreprise${sep}Poste${sep}Etat${sep}Date Envoi${sep}Date Relance${sep}Date Retour${sep}Lien${sep}Mail${sep}Notes\n`;
+  csvContent += `Entreprise${sep}Poste${sep}Etat${sep}Date Envoi${sep}Date Relance${sep}Date Derniere Rel${sep}Date Retour${sep}Lien${sep}Mail${sep}Notes\n`;
   allStages.forEach((row) => {
     const clean = (txt) => {
       if (!txt) return "";
@@ -338,6 +374,7 @@ document.getElementById("btnExport").addEventListener("click", () => {
       clean(row.etat),
       clean(row.dateEnvoi),
       clean(row.dateRelance),
+      clean(row.dateDerniereRelance),
       clean(row.dateStatut),
       clean(row.lien),
       clean(row.lienMail),
