@@ -16,7 +16,9 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔴 CONFIG FIREBASE
+// -----------------------------------------------------------
+// 🔴 1. COLLE TA CONFIG FIREBASE ICI
+// -----------------------------------------------------------
   const firebaseConfig = {
     apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
     authDomain: "mon-suivi-stage.firebaseapp.com",
@@ -26,8 +28,14 @@ import {
     appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
     measurementId: "G-GL4HPEBLRW",
   };
-const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2";
 
+// -----------------------------------------------------------
+// 🔴 2. COLLE TON UID ICI
+// -----------------------------------------------------------
+const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2";
+// -----------------------------------------------------------
+
+// Initialisation
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -36,7 +44,7 @@ const provider = new GithubAuthProvider();
 
 let isAdmin = false;
 let allStages = [];
-let myChart = null; // Variable pour stocker le graphique
+let myChart = null;
 
 // --- DARK MODE ---
 const btnTheme = document.getElementById("btnTheme");
@@ -97,7 +105,6 @@ document
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
-    // On compte aussi les refusés maintenant
     let stats = { total: 0, attente: 0, entretien: 0, valide: 0, refuse: 0 };
 
     snapshot.forEach((doc) => {
@@ -127,7 +134,6 @@ function chargerDonnees() {
 }
 
 function updateStats(stats) {
-  // 1. Mise à jour des cartes chiffres
   const c = document.getElementById("stats-numbers");
   c.innerHTML = `
         <div class="col-6 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.7em">TOTAL</small></div></div>
@@ -136,19 +142,15 @@ function updateStats(stats) {
         <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.7em">VALIDÉ</small></div></div>
     `;
 
-  // 2. Mise à jour du Graphique (Chart.js)
   const ctx = document.getElementById("statsChart");
-
-  // Si un graphique existe déjà, on le détruit pour le redessiner
   if (myChart) myChart.destroy();
 
-  // Si on a 0 données, on affiche un donut vide gris
   let dataChart = [stats.attente, stats.entretien, stats.valide, stats.refuse];
-  let colors = ["#ffc107", "#0dcaf0", "#198754", "#dc3545"]; // Jaune, Bleu, Vert, Rouge
+  let colors = ["#ffc107", "#0dcaf0", "#198754", "#dc3545"];
 
   if (stats.total === 0) {
     dataChart = [1];
-    colors = ["#e9ecef"]; // Gris
+    colors = ["#e9ecef"];
   }
 
   myChart = new Chart(ctx, {
@@ -167,9 +169,7 @@ function updateStats(stats) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }, // On cache la légende car les couleurs sont évidentes
-      },
+      plugins: { legend: { display: false } },
     },
   });
 }
@@ -289,6 +289,7 @@ document.getElementById("btnExport").addEventListener("click", () => {
 document.getElementById("stageForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
+
   const docId = document.getElementById("docId").value;
   const stageData = {
     entreprise: document.getElementById("entreprise").value,
@@ -299,18 +300,28 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     etat: document.getElementById("etat").value,
     notes: document.getElementById("notes").value,
   };
+
   try {
-    if (docId) await updateDoc(doc(db, "stages", docId), stageData);
-    else await addDoc(stagesCollection, stageData);
+    if (docId) {
+      // MODIFICATION
+      await updateDoc(doc(db, "stages", docId), stageData);
+    } else {
+      // CRÉATION
+      await addDoc(stagesCollection, stageData);
+    }
     window.hideForm();
   } catch (err) {
     alert(err.message);
   }
 });
+
 async function deleteStage(id) {
   if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
 }
+
+// --- FONCTION MODIFIEE POUR NE PAS RESET ---
 function editStage(s) {
+  // 1. On remplit les champs
   document.getElementById("docId").value = s.id;
   document.getElementById("entreprise").value = s.entreprise;
   document.getElementById("poste").value = s.poste;
@@ -319,9 +330,15 @@ function editStage(s) {
   document.getElementById("dateRelance").value = s.dateRelance || "";
   document.getElementById("etat").value = s.etat;
   document.getElementById("notes").value = s.notes || "";
+
+  // 2. On change le titre
   document.getElementById("form-title").innerText = "Modifier";
-  window.showForm();
+
+  // 3. On affiche le formulaire MANUELLEMENT (sans passer par showForm qui reset tout)
+  document.getElementById("form-card").style.display = "block";
+  window.scrollTo(0, 0);
 }
+
 document.getElementById("dateEnvoi").addEventListener("change", function () {
   if (this.value) {
     const d = new Date(this.value);
@@ -331,12 +348,16 @@ document.getElementById("dateEnvoi").addEventListener("change", function () {
       .split("T")[0];
   }
 });
+
+// --- FONCTIONS GLOBALES ---
+// Cette fonction sert UNIQUEMENT pour le bouton "Nouveau"
 window.showForm = () => {
   document.getElementById("form-card").style.display = "block";
   document.getElementById("form-title").innerText = "Ajouter";
-  document.getElementById("docId").value = "";
-  document.getElementById("stageForm").reset();
+  document.getElementById("docId").value = ""; // On vide l'ID pour être sûr de créer du neuf
+  document.getElementById("stageForm").reset(); // On vide les champs
   window.scrollTo(0, 0);
 };
+
 window.hideForm = () =>
   (document.getElementById("form-card").style.display = "none");
