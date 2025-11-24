@@ -4,30 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi Stage Pro</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js pour le graphique -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* Styles spécifiques intégrés si le CSS ne charge pas tout de suite */
-        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #212529; z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        #app-content { display: none; }
-        .admin-only { display: none !important; }
-        .chart-container { position: relative; height: 160px; width: 100%; display: flex; justify-content: center; }
-    </style>
+    <!-- Ton CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<!-- 🔒 ÉCRAN DE CONNEXION -->
 <div id="login-screen">
     <div class="card p-4 shadow-lg text-center" style="max-width: 450px; width: 90%;">
         <h1 class="mb-3">🚀</h1>
         <h4 class="mb-4">Mon Suivi de Stage</h4>
-        <button id="btnGithubLogin" class="btn btn-dark btn-lg w-100 mb-3"><i class="bi bi-github me-2"></i> Se connecter avec GitHub</button>
-        <div class="alert alert-light border small text-muted"><i class="bi bi-info-circle-fill"></i> Mode lecture seule pour les visiteurs.</div>
+        <button id="btnGithubLogin" class="btn btn-dark btn-lg w-100 mb-3">
+            <i class="bi bi-github me-2"></i> Se connecter avec GitHub
+        </button>
+        <div class="alert alert-light border small text-muted">
+            <i class="bi bi-info-circle-fill"></i> Mode lecture seule pour les visiteurs.
+        </div>
         <div id="login-error" class="text-danger mt-2 fw-bold small"></div>
     </div>
 </div>
 
+<!-- 📱 CONTENU DE L'APPLICATION -->
 <div id="app-content">
     <div class="container mt-4 mb-5">
         
@@ -35,38 +38,57 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center">
                 <img id="userAvatar" src="" class="rounded-circle me-2 border border-2 border-secondary shadow-sm" style="width: 40px; height: 40px;">
-                <div><h1 class="h5 mb-0 fw-bold">Mes Stages</h1><span id="userStatus" class="badge bg-secondary" style="font-size: 0.6em;">Chargement...</span></div>
+                <div>
+                    <h1 class="h5 mb-0 fw-bold">Mes Stages</h1>
+                    <span id="userStatus" class="badge bg-secondary" style="font-size: 0.6em;">Chargement...</span>
+                </div>
             </div>
             <div class="d-flex gap-2">
-                <button id="btnTheme" class="btn btn-outline-secondary btn-sm"><i class="bi bi-moon-stars-fill"></i></button>
-                <button id="btnExport" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-spreadsheet-fill"></i></button>
-                <button id="btnLogout" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i></button>
+                <button id="btnTheme" class="btn btn-outline-secondary btn-sm" title="Changer le thème"><i class="bi bi-moon-stars-fill"></i></button>
+                <button id="btnExport" class="btn btn-outline-success btn-sm" title="Exporter CSV"><i class="bi bi-file-earmark-spreadsheet-fill"></i></button>
+                <button id="btnLogout" class="btn btn-outline-danger btn-sm" title="Déconnexion"><i class="bi bi-box-arrow-right"></i></button>
             </div>
         </div>
 
-        <!-- STATS -->
+        <!-- STATISTIQUES (GRAPHIQUE + CHIFFRES) -->
         <div class="row mb-4 align-items-center">
-            <div class="col-md-3 mb-3 mb-md-0"><div class="card shadow-sm p-2"><div class="chart-container"><canvas id="statsChart"></canvas></div></div></div>
-            <div class="col-md-9"><div class="row gx-2 text-center" id="stats-numbers"></div></div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="card shadow-sm p-2">
+                    <div class="chart-container">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="row gx-2 text-center" id="stats-numbers">
+                    <!-- Rempli par JS -->
+                </div>
+            </div>
         </div>
 
-        <!-- OUTILS -->
+        <!-- BARRE D'OUTILS -->
         <div class="row g-2 mb-3 align-items-center">
-            <div class="col-md-4"><div class="input-group"><span class="input-group-text bg-body"><i class="bi bi-search"></i></span><input type="text" id="searchInput" class="form-control" placeholder="Rechercher..."></div></div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher...">
+                </div>
+            </div>
             <div class="col-md-6">
                 <div class="btn-group w-100" role="group">
                     <button type="button" class="btn btn-outline-secondary active filter-btn" data-filter="all">Tout</button>
                     <button type="button" class="btn btn-outline-warning filter-btn text-dark" data-filter="En attente">Att.</button>
                     <button type="button" class="btn btn-outline-info filter-btn text-dark" data-filter="Entretien">Entr.</button>
-                    <!-- NOUVEAU BOUTON FILTRE -->
                     <button type="button" class="btn btn-outline-primary filter-btn" data-filter="Suite Entretien">Suite</button>
                     <button type="button" class="btn btn-outline-success filter-btn" data-filter="Validé">OK</button>
                 </div>
             </div>
-            <div class="col-md-2 text-end"><button onclick="showForm()" id="btnNouveau" class="btn btn-primary w-100 shadow-sm admin-only fw-bold">+ Nouveau</button></div>
+            <div class="col-md-2 text-end">
+                <button onclick="showForm()" id="btnNouveau" class="btn btn-primary w-100 shadow-sm admin-only fw-bold">+ Nouveau</button>
+            </div>
         </div>
 
-        <!-- FORMULAIRE -->
+        <!-- FORMULAIRE D'AJOUT/MODIF (Caché) -->
         <div id="form-card" class="card shadow mb-4" style="display: none;">
             <div class="card-header bg-primary text-white d-flex justify-content-between py-2 align-items-center">
                 <h6 id="form-title" class="mb-0 fw-bold">Ajouter un stage</h6>
@@ -75,9 +97,16 @@
             <div class="card-body">
                 <form id="stageForm">
                     <input type="hidden" id="docId">
+                    
                     <div class="row mb-2">
-                        <div class="col-6"><label class="small fw-bold">Entreprise</label><input type="text" id="entreprise" class="form-control form-control-sm" required></div>
-                        <div class="col-6"><label class="small fw-bold">Poste</label><input type="text" id="poste" class="form-control form-control-sm" required></div>
+                        <div class="col-6">
+                            <label class="small fw-bold">Entreprise</label>
+                            <input type="text" id="entreprise" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="small fw-bold">Poste</label>
+                            <input type="text" id="poste" class="form-control form-control-sm" required>
+                        </div>
                     </div>
                     
                     <div class="mb-2">
@@ -112,12 +141,15 @@
                             <select id="etat" class="form-select form-select-sm">
                                 <option value="En attente">⏳ En attente</option>
                                 <option value="Entretien">🗣️ Entretien (Prévu)</option>
-                                <option value="Suite Entretien">🤔 Suite Entr. (Attente rép.)</option> <!-- NOUVEAU -->
+                                <option value="Suite Entretien">🤔 Suite Entr. (Attente rép.)</option>
                                 <option value="Validé">✅ Validé</option>
                                 <option value="Refusé">❌ Refusé</option>
                             </select>
                         </div>
-                        <div class="col-6"><label class="small">Notes</label><textarea id="notes" class="form-control form-control-sm" rows="1"></textarea></div>
+                        <div class="col-6">
+                            <label class="small">Notes</label>
+                            <textarea id="notes" class="form-control form-control-sm" rows="1"></textarea>
+                        </div>
                     </div>
                     
                     <button type="submit" id="btnSave" class="btn btn-success w-100 btn-sm fw-bold">Enregistrer</button>
@@ -125,14 +157,21 @@
             </div>
         </div>
 
-        <!-- LISTE -->
+        <!-- LISTE DES STAGES -->
         <div class="card shadow-sm border-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
                     <thead class="table-secondary text-uppercase" style="font-size: 0.75rem;">
-                        <tr><th class="ps-3">Candidature</th><th>État</th><th>Calendrier</th><th class="text-end pe-3">Actions</th></tr>
+                        <tr>
+                            <th class="ps-3">Candidature</th>
+                            <th>État</th>
+                            <th>Calendrier</th>
+                            <th class="text-end pe-3">Actions</th>
+                        </tr>
                     </thead>
-                    <tbody id="stages-table-body"></tbody>
+                    <tbody id="stages-table-body">
+                        <!-- Rempli par JS -->
+                    </tbody>
                 </table>
             </div>
             <div id="loading" class="text-center p-5 text-muted">Chargement...</div>
@@ -140,6 +179,8 @@
     </div>
 </div>
 
+<!-- Import du fichier JS externe -->
 <script type="module" src="app.js"></script>
+
 </body>
 </html>

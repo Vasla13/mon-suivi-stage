@@ -17,7 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ==========================================
-// 🔴 ZONE DE CONFIGURATION INTEGRÉE
+// 🔴 CONFIGURATION FIREBASE & UID
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
@@ -94,11 +94,19 @@ document
   .getElementById("btnLogout")
   .addEventListener("click", () => signOut(auth));
 
-// --- DATA ---
+// --- UTILITAIRE : CALCUL DE JOURS ---
+function getDaysDiff(dateString) {
+  if (!dateString) return 0;
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// --- DATA & AUTO-REFUS ---
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
-    // On compte le nouveau statut 'suite'
     let stats = {
       total: 0,
       attente: 0,
@@ -108,9 +116,33 @@ function chargerDonnees() {
       refuse: 0,
     };
 
-    snapshot.forEach((doc) => {
-      let data = doc.data();
-      data.id = doc.id;
+    snapshot.forEach((docSnapshot) => {
+      // Renommé pour éviter confusion avec 'doc' de updateDoc
+      let data = docSnapshot.data();
+      data.id = docSnapshot.id;
+
+      // --- ⚡ LOGIQUE AUTO-REFUS 21 JOURS ⚡ ---
+      // Si Admin connecté + Statut Attente/Suite + Date envoi > 21 jours
+      if (
+        isAdmin &&
+        (data.etat === "En attente" || data.etat === "Suite Entretien") &&
+        data.dateEnvoi
+      ) {
+        const daysElapsed = getDaysDiff(data.dateEnvoi);
+        if (daysElapsed > 21) {
+          // On met à jour directement dans la base
+          updateDoc(doc(db, "stages", data.id), {
+            etat: "Refusé",
+            notes:
+              (data.notes || "") +
+              " \n[Auto] Refusé car sans réponse depuis > 21 jours.",
+          });
+          // On met à jour l'objet local pour l'affichage immédiat
+          data.etat = "Refusé";
+        }
+      }
+      // -------------------------------------------
+
       allStages.push(data);
       stats.total++;
       if (data.etat === "En attente") stats.attente++;
@@ -122,14 +154,10 @@ function chargerDonnees() {
 
     // Tri intelligent
     allStages.sort((a, b) => {
-      // Priorité absolue : Entretien et Suite Entretien
       const isPrioA = a.etat === "Entretien" || a.etat === "Suite Entretien";
       const isPrioB = b.etat === "Entretien" || b.etat === "Suite Entretien";
-
       if (isPrioA && !isPrioB) return -1;
       if (!isPrioA && isPrioB) return 1;
-
-      // Ensuite par date de relance
       if (a.dateRelance && !b.dateRelance) return -1;
       if (!a.dateRelance && b.dateRelance) return 1;
       return 0;
@@ -147,15 +175,11 @@ function updateStats(stats) {
         <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
-        
         <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE ENTR.</small></div></div>
         <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
     `;
-
   const ctx = document.getElementById("statsChart");
   if (myChart) myChart.destroy();
-
-  // Ajout de la couleur violette pour "Suite"
   let dataChart = [
     stats.attente,
     stats.entretien,
@@ -164,12 +188,10 @@ function updateStats(stats) {
     stats.refuse,
   ];
   let colors = ["#ffc107", "#0dcaf0", "#6610f2", "#198754", "#dc3545"];
-
   if (stats.total === 0) {
     dataChart = [1];
     colors = ["#444"];
   }
-
   myChart = new Chart(ctx, {
     type: "doughnut",
     data: {
@@ -197,21 +219,35 @@ function renderTable(stagesToDisplay) {
   let html = "";
 
   stagesToDisplay.forEach((stage) => {
-    // --- LOGIQUE DATES ---
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
 
-    // Si En attente OU Suite Entretien (on attend une réponse) -> On affiche Relance
+    // Si En attente OU Suite Entretien : On affiche Relance + Compteur Jours
     if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
+      let daysCounter = "";
+      // Calcul des jours écoulés depuis l'envoi
+      if (stage.dateEnvoi) {
+        const days = getDaysDiff(stage.dateEnvoi);
+        const color =
+          days > 14
+            ? "text-danger fw-bold"
+            : days > 7
+            ? "text-warning"
+            : "text-muted";
+        daysCounter = `<span class="${color} small ms-1">(${days}j)</span>`;
+      }
+
       if (stage.dateRelance) {
         if (stage.dateRelance < today)
-          dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance}</div>`;
+          dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance} ${daysCounter}</div>`;
         else if (stage.dateRelance === today)
-          dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span>`;
+          dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span> ${daysCounter}`;
         else
-          dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance}</span>`;
+          dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance} ${daysCounter}</span>`;
+      } else if (daysCounter) {
+        dateHtml = `<span class="text-muted small">En cours ${daysCounter}</span>`;
       }
     } else {
-      // Sinon -> Date de Retour/RDV
+      // Sinon (Validé/Refusé/Entretien) -> Date Statut
       if (stage.dateStatut) {
         let colorClass = "text-muted";
         if (stage.etat === "Refusé") colorClass = "text-danger";
@@ -221,29 +257,21 @@ function renderTable(stagesToDisplay) {
       }
     }
 
-    // --- LOGIQUE COULEURS ETAT ---
     let badgeClass = "bg-warning text-dark bg-opacity-75";
     if (stage.etat === "Validé") badgeClass = "bg-success";
     if (stage.etat === "Refusé") badgeClass = "bg-danger";
     if (stage.etat === "Entretien") badgeClass = "bg-info text-dark";
-    if (stage.etat === "Suite Entretien") badgeClass = "bg-primary text-white"; // Violet/Bleu
+    if (stage.etat === "Suite Entretien") badgeClass = "bg-primary text-white";
 
     let lienHtml = stage.lien
       ? `<a href="${stage.lien}" target="_blank" class="text-secondary ms-1 text-decoration-none" title="Annonce"><i class="bi bi-link-45deg"></i></a>`
       : "";
-
-    // --- LIEN MAIL (ADMIN SEULEMENT) ---
-    let mailHtml = "";
-    if (isAdmin && stage.lienMail) {
-      mailHtml = `<a href="${stage.lienMail}" target="_blank" class="text-primary ms-1" title="Ouvrir le mail"><i class="bi bi-envelope-at-fill"></i></a>`;
-    }
-
+    let mailHtml =
+      isAdmin && stage.lienMail
+        ? `<a href="${stage.lienMail}" target="_blank" class="text-primary ms-1" title="Ouvrir le mail"><i class="bi bi-envelope-at-fill"></i></a>`
+        : "";
     let actionsHtml = isAdmin
-      ? `
-              <div class="btn-group">
-                  <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${stage.id}"><i class="bi bi-pencil-fill"></i></button>
-                  <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${stage.id}"><i class="bi bi-trash-fill"></i></button>
-              </div>`
+      ? `<div class="btn-group"><button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${stage.id}"><i class="bi bi-pencil-fill"></i></button><button class="btn btn-sm btn-outline-danger btn-delete" data-id="${stage.id}"><i class="bi bi-trash-fill"></i></button></div>`
       : `<span class="text-muted small"><i class="bi bi-eye"></i></span>`;
 
     html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${mailHtml} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actionsHtml}</td></tr>`;
@@ -326,11 +354,9 @@ document.getElementById("btnExport").addEventListener("click", () => {
   document.body.removeChild(link);
 });
 
-// --- CRUD ---
 document.getElementById("stageForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
-
   const docId = document.getElementById("docId").value;
   const stageData = {
     entreprise: document.getElementById("entreprise").value,
@@ -343,7 +369,6 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     etat: document.getElementById("etat").value,
     notes: document.getElementById("notes").value,
   };
-
   try {
     if (docId) {
       await updateDoc(doc(db, "stages", docId), stageData);
@@ -355,11 +380,9 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     alert("Erreur : " + err.message);
   }
 });
-
 async function deleteStage(id) {
   if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
 }
-
 function editStage(s) {
   document.getElementById("docId").value = s.id;
   document.getElementById("entreprise").value = s.entreprise;
@@ -371,12 +394,10 @@ function editStage(s) {
   document.getElementById("dateStatut").value = s.dateStatut || "";
   document.getElementById("etat").value = s.etat;
   document.getElementById("notes").value = s.notes || "";
-
   document.getElementById("form-title").innerText = "Modifier";
   document.getElementById("form-card").style.display = "block";
   window.scrollTo(0, 0);
 }
-
 document.getElementById("dateEnvoi").addEventListener("change", function () {
   if (this.value) {
     const d = new Date(this.value);
@@ -386,7 +407,6 @@ document.getElementById("dateEnvoi").addEventListener("change", function () {
       .split("T")[0];
   }
 });
-
 window.showForm = () => {
   document.getElementById("form-card").style.display = "block";
   document.getElementById("form-title").innerText = "Ajouter";
