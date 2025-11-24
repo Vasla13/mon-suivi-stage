@@ -76,20 +76,31 @@
                     </div>
                     
                     <div class="mb-2">
-                        <input type="url" id="lien" class="form-control form-control-sm" placeholder="Lien de l'annonce (Indeed, LinkedIn...)">
+                        <input type="url" id="lien" class="form-control form-control-sm" placeholder="Lien de l'annonce">
                     </div>
 
                     <div class="mb-2">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text text-primary"><i class="bi bi-envelope-at-fill"></i></span>
-                            <input type="url" id="lienMail" class="form-control" placeholder="Colle ici l'URL de ton mail (https://mail.google...)">
+                            <input type="url" id="lienMail" class="form-control" placeholder="Lien du mail (ex: https://mail.google...)">
                         </div>
                     </div>
 
                     <div class="row mb-2 bg-body-tertiary p-2 rounded border mx-0">
-                        <div class="col-6"><label class="small text-muted">Envoyé le</label><input type="date" id="dateEnvoi" class="form-control form-control-sm"></div>
-                        <div class="col-6"><label class="small text-primary fw-bold">Relance</label><input type="date" id="dateRelance" class="form-control form-control-sm border-primary"></div>
+                        <div class="col-4">
+                            <label class="small text-muted">Envoyé le</label>
+                            <input type="date" id="dateEnvoi" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-4">
+                            <label class="small text-primary fw-bold">Relance (+7j)</label>
+                            <input type="date" id="dateRelance" class="form-control form-control-sm border-primary">
+                        </div>
+                        <div class="col-4">
+                            <label class="small text-success fw-bold">Date Retour/Entr.</label>
+                            <input type="date" id="dateStatut" class="form-control form-control-sm border-success">
+                        </div>
                     </div>
+
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="small fw-bold">État</label>
@@ -112,7 +123,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
                     <thead class="table-secondary text-uppercase" style="font-size: 0.75rem;">
-                        <tr><th class="ps-3">Candidature</th><th>État</th><th>Relance</th><th class="text-end pe-3">Actions</th></tr>
+                        <tr><th class="ps-3">Candidature</th><th>État</th><th>Calendrier</th><th class="text-end pe-3">Actions</th></tr>
                     </thead>
                     <tbody id="stages-table-body"></tbody>
                 </table>

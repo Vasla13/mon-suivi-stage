@@ -110,11 +110,15 @@ function chargerDonnees() {
       if (data.etat === "Refusé") stats.refuse++;
     });
 
+    // Tri intelligent
     allStages.sort((a, b) => {
+      // Si entretien, très important, en haut
+      if (a.etat === "Entretien" && b.etat !== "Entretien") return -1;
+      if (a.etat !== "Entretien" && b.etat === "Entretien") return 1;
+
+      // Sinon tri par date de relance
       if (a.dateRelance && !b.dateRelance) return -1;
       if (!a.dateRelance && b.dateRelance) return 1;
-      if (a.dateRelance && b.dateRelance)
-        return new Date(a.dateRelance) - new Date(b.dateRelance);
       return 0;
     });
 
@@ -167,18 +171,30 @@ function renderTable(stagesToDisplay) {
   let html = "";
 
   stagesToDisplay.forEach((stage) => {
-    let relanceHtml = '<span class="text-muted text-opacity-50 small">-</span>';
-    if (
-      stage.etat !== "Validé" &&
-      stage.etat !== "Refusé" &&
-      stage.dateRelance
-    ) {
-      if (stage.dateRelance < today)
-        relanceHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> ${stage.dateRelance}</div>`;
-      else if (stage.dateRelance === today)
-        relanceHtml = `<span class="badge bg-warning text-dark border border-dark">AUJ.</span>`;
-      else
-        relanceHtml = `<span class="text-secondary small">${stage.dateRelance}</span>`;
+    // --- LOGIQUE DATES ---
+    // On affiche "Relance" SI En attente. Sinon on affiche "Date Retour"
+    let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
+
+    if (stage.etat === "En attente") {
+      // Mode RELANCE
+      if (stage.dateRelance) {
+        if (stage.dateRelance < today)
+          dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance}</div>`;
+        else if (stage.dateRelance === today)
+          dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span>`;
+        else
+          dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance}</span>`;
+      }
+    } else {
+      // Mode RETOUR (Validé, Refusé, Entretien)
+      if (stage.dateStatut) {
+        let colorClass = "text-muted";
+        if (stage.etat === "Refusé") colorClass = "text-danger";
+        if (stage.etat === "Validé") colorClass = "text-success";
+        if (stage.etat === "Entretien") colorClass = "text-info";
+
+        dateHtml = `<span class="${colorClass} small fw-bold"><i class="bi bi-calendar-check"></i> ${stage.dateStatut}</span>`;
+      }
     }
 
     let badgeClass = "bg-warning text-dark bg-opacity-75";
@@ -190,9 +206,9 @@ function renderTable(stagesToDisplay) {
       ? `<a href="${stage.lien}" target="_blank" class="text-secondary ms-1 text-decoration-none" title="Annonce"><i class="bi bi-link-45deg"></i></a>`
       : "";
 
-    // GESTION LIEN MAIL (Enveloppe bleue)
+    // --- LOGIQUE MAIL (VISIBLE UNIQUEMENT PAR ADMIN) ---
     let mailHtml = "";
-    if (stage.lienMail) {
+    if (isAdmin && stage.lienMail) {
       mailHtml = `<a href="${stage.lienMail}" target="_blank" class="text-primary ms-1" title="Ouvrir le mail"><i class="bi bi-envelope-at-fill"></i></a>`;
     }
 
@@ -204,11 +220,12 @@ function renderTable(stagesToDisplay) {
               </div>`
       : `<span class="text-muted small"><i class="bi bi-eye"></i></span>`;
 
-    html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${mailHtml} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${relanceHtml}</td><td class="text-end pe-3">${actionsHtml}</td></tr>`;
+    html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${mailHtml} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actionsHtml}</td></tr>`;
   });
   tableBody.innerHTML = stagesToDisplay.length
     ? html
     : `<tr><td colspan="4" class="text-center py-4 text-muted">Aucun résultat.</td></tr>`;
+
   if (isAdmin) {
     document
       .querySelectorAll(".btn-delete")
@@ -255,7 +272,7 @@ document.getElementById("btnExport").addEventListener("click", () => {
   if (allStages.length === 0) return alert("Rien à exporter !");
   let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
   const sep = ";";
-  csvContent += `Entreprise${sep}Poste${sep}Etat${sep}Date Envoi${sep}Date Relance${sep}Lien${sep}Mail${sep}Notes\n`;
+  csvContent += `Entreprise${sep}Poste${sep}Etat${sep}Date Envoi${sep}Date Relance${sep}Date Retour${sep}Lien${sep}Mail${sep}Notes\n`;
   allStages.forEach((row) => {
     const clean = (txt) => {
       if (!txt) return "";
@@ -267,6 +284,7 @@ document.getElementById("btnExport").addEventListener("click", () => {
       clean(row.etat),
       clean(row.dateEnvoi),
       clean(row.dateRelance),
+      clean(row.dateStatut),
       clean(row.lien),
       clean(row.lienMail),
       clean(row.notes),
@@ -292,9 +310,10 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     entreprise: document.getElementById("entreprise").value,
     poste: document.getElementById("poste").value,
     lien: document.getElementById("lien").value,
-    lienMail: document.getElementById("lienMail").value, // NOUVEAU CHAMP
+    lienMail: document.getElementById("lienMail").value,
     dateEnvoi: document.getElementById("dateEnvoi").value,
     dateRelance: document.getElementById("dateRelance").value,
+    dateStatut: document.getElementById("dateStatut").value, // NOUVEAU CHAMP
     etat: document.getElementById("etat").value,
     notes: document.getElementById("notes").value,
   };
@@ -320,9 +339,10 @@ function editStage(s) {
   document.getElementById("entreprise").value = s.entreprise;
   document.getElementById("poste").value = s.poste;
   document.getElementById("lien").value = s.lien || "";
-  document.getElementById("lienMail").value = s.lienMail || ""; // Remplir le champ mail
+  document.getElementById("lienMail").value = s.lienMail || "";
   document.getElementById("dateEnvoi").value = s.dateEnvoi || "";
   document.getElementById("dateRelance").value = s.dateRelance || "";
+  document.getElementById("dateStatut").value = s.dateStatut || ""; // Remplir le nouveau champ
   document.getElementById("etat").value = s.etat;
   document.getElementById("notes").value = s.notes || "";
 
