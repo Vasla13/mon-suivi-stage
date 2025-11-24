@@ -1,23 +1,25 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi Stage</title>
+    <title>Suivi Stage Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="style.css">
     
     <style>
+        /* Styles spécifiques au layout */
         #login-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #212529; z-index: 9999;
             display: flex; justify-content: center; align-items: center;
         }
         #app-content { display: none; }
-        .card { border: none; }
-        /* Classe pour cacher les éléments admin aux invités */
+        .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
         .admin-only { display: none !important; }
+        body { transition: background-color 0.3s, color 0.3s; }
+        .table { transition: color 0.3s; }
     </style>
 </head>
 <body>
@@ -26,16 +28,12 @@
     <div class="card p-4 shadow-lg text-center" style="max-width: 450px; width: 90%;">
         <h1 class="mb-3">🚀</h1>
         <h4 class="mb-4">Mon Suivi de Stage</h4>
-        
         <button id="btnGithubLogin" class="btn btn-dark btn-lg w-100 mb-3">
             <i class="bi bi-github me-2"></i> Se connecter avec GitHub
         </button>
-        
         <div class="alert alert-light border small text-muted">
-            <i class="bi bi-info-circle-fill"></i> <strong>Note :</strong> 
-            Seul le propriétaire peut modifier les données. Les visiteurs accèdent au site en <strong>lecture seule</strong> (mode visuel uniquement).
+            <i class="bi bi-info-circle-fill"></i> Seul le propriétaire peut modifier. Les visiteurs sont en lecture seule.
         </div>
-
         <div id="login-error" class="text-danger mt-2 fw-bold small"></div>
     </div>
 </div>
@@ -45,26 +43,47 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center">
-                <img id="userAvatar" src="" class="rounded-circle me-2 border border-2 border-white shadow-sm" style="width: 40px; height: 40px;">
+                <img id="userAvatar" src="" class="rounded-circle me-2 border border-2 border-secondary shadow-sm" style="width: 40px; height: 40px;">
                 <div>
                     <h1 class="h5 mb-0 fw-bold">Mes Stages</h1>
-                    <span id="userStatus" class="badge bg-secondary" style="font-size: 0.6em;">Visiteur</span>
+                    <span id="userStatus" class="badge bg-secondary" style="font-size: 0.6em;">Chargement...</span>
                 </div>
             </div>
-            <div>
-                <button onclick="showForm()" id="btnNouveau" class="btn btn-dark btn-sm shadow-sm admin-only">+ Nouveau</button>
-                <button id="btnLogout" class="btn btn-outline-danger btn-sm ms-2" title="Déconnexion"><i class="bi bi-box-arrow-right"></i></button>
+            <div class="d-flex gap-2">
+                <button id="btnTheme" class="btn btn-outline-secondary btn-sm" title="Changer le thème"><i class="bi bi-moon-stars-fill"></i></button>
+                <button id="btnExport" class="btn btn-outline-success btn-sm" title="Exporter CSV"><i class="bi bi-file-earmark-spreadsheet-fill"></i></button>
+                <button id="btnLogout" class="btn btn-outline-danger btn-sm" title="Déconnexion"><i class="bi bi-box-arrow-right"></i></button>
             </div>
         </div>
 
         <div class="row mb-4 text-center gx-2" id="stats-container"></div>
+
+        <div class="row g-2 mb-3 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher...">
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary active filter-btn" data-filter="all">Tout</button>
+                    <button type="button" class="btn btn-outline-warning filter-btn text-dark" data-filter="En attente">Attente</button>
+                    <button type="button" class="btn btn-outline-info filter-btn text-dark" data-filter="Entretien">Entr.</button>
+                    <button type="button" class="btn btn-outline-success filter-btn" data-filter="Validé">Validé</button>
+                </div>
+            </div>
+            <div class="col-md-2 text-end">
+                <button onclick="showForm()" id="btnNouveau" class="btn btn-primary w-100 shadow-sm admin-only fw-bold">+ Nouveau</button>
+            </div>
+        </div>
 
         <div id="form-card" class="card shadow mb-4" style="display: none;">
             <div class="card-header bg-primary text-white d-flex justify-content-between py-2 align-items-center">
                 <h6 id="form-title" class="mb-0 fw-bold">Ajouter un stage</h6>
                 <button onclick="hideForm()" class="btn btn-sm btn-light py-0 text-primary fw-bold">✕</button>
             </div>
-            <div class="card-body bg-light">
+            <div class="card-body">
                 <form id="stageForm">
                     <input type="hidden" id="docId">
                     <div class="row mb-2">
@@ -72,7 +91,7 @@
                         <div class="col-6"><label class="small fw-bold">Poste</label><input type="text" id="poste" class="form-control form-control-sm" required></div>
                     </div>
                     <div class="mb-2"><input type="url" id="lien" class="form-control form-control-sm" placeholder="Lien annonce"></div>
-                    <div class="row mb-2 bg-white p-2 rounded border mx-0">
+                    <div class="row mb-2 bg-body-tertiary p-2 rounded border mx-0">
                         <div class="col-6"><label class="small text-muted">Envoyé le</label><input type="date" id="dateEnvoi" class="form-control form-control-sm"></div>
                         <div class="col-6"><label class="small text-primary fw-bold">Relance</label><input type="date" id="dateRelance" class="form-control form-control-sm border-primary"></div>
                     </div>
@@ -112,188 +131,7 @@
     </div>
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, signInWithPopup, GithubAuthProvider, signOut, onAuthStateChanged } 
-    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } 
-    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-  // -----------------------------------------------------------
-  // 🔴 COLLE TA CONFIG FIREBASE ICI
-  // -----------------------------------------------------------
-  const firebaseConfig = {
-  apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
-  authDomain: "mon-suivi-stage.firebaseapp.com",
-  projectId: "mon-suivi-stage",
-  storageBucket: "mon-suivi-stage.firebasestorage.app",
-  messagingSenderId: "134252253002",
-  appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
-  measurementId: "G-GL4HPEBLRW"
-};
-
-  // -----------------------------------------------------------
-  // 🔴 COLLE TON UID ICI
-  // -----------------------------------------------------------
-  const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2"; 
-  // -----------------------------------------------------------
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-  const stagesCollection = collection(db, "stages");
-  const provider = new GithubAuthProvider();
-
-  // Variable globale pour savoir si on est admin
-  let isAdmin = false;
-
-  // --- GESTION CONNEXION ---
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // Vérification : Est-ce l'admin ?
-        isAdmin = (user.uid === ADMIN_UID);
-
-        // UI : Affichage conditionnel
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("app-content").style.display = "block";
-        if(user.photoURL) document.getElementById("userAvatar").src = user.photoURL;
-
-        const statusBadge = document.getElementById("userStatus");
-        const btnNouveau = document.getElementById("btnNouveau");
-
-        if (isAdmin) {
-            statusBadge.className = "badge bg-primary";
-            statusBadge.innerText = "Admin (Édition)";
-            btnNouveau.classList.remove("admin-only"); // Montre le bouton Nouveau
-        } else {
-            statusBadge.className = "badge bg-secondary";
-            statusBadge.innerText = "Invité (Lecture seule)";
-            btnNouveau.classList.add("admin-only"); // Cache le bouton Nouveau
-        }
-
-        chargerDonnees();
-    } else {
-        document.getElementById("login-screen").style.display = "flex";
-        document.getElementById("app-content").style.display = "none";
-    }
-  });
-
-  document.getElementById("btnGithubLogin").addEventListener("click", () => {
-    signInWithPopup(auth, provider).catch((err) => alert(err.message));
-  });
-  document.getElementById("btnLogout").addEventListener("click", () => signOut(auth));
-
-  // --- CHARGEMENT ---
-  function chargerDonnees() {
-      onSnapshot(stagesCollection, (snapshot) => {
-        const tableBody = document.getElementById("stages-table-body");
-        let html = "";
-        let stats = { total: 0, attente: 0, entretien: 0, valide: 0 };
-        let stages = [];
-
-        snapshot.forEach((doc) => {
-            let data = doc.data(); data.id = doc.id; stages.push(data);
-            stats.total++;
-            if(data.etat === "En attente") stats.attente++;
-            if(data.etat === "Entretien") stats.entretien++;
-            if(data.etat === "Validé") stats.valide++;
-        });
-
-        stages.sort((a, b) => {
-            if (a.dateRelance && !b.dateRelance) return -1;
-            if (!a.dateRelance && b.dateRelance) return 1;
-            if (a.dateRelance && b.dateRelance) return new Date(a.dateRelance) - new Date(b.dateRelance);
-            return 0;
-        });
-
-        const today = new Date().toISOString().split('T')[0];
-
-        stages.forEach(stage => {
-            let relanceHtml = '<span class="text-muted text-opacity-50 small">-</span>';
-            if (stage.etat !== 'Validé' && stage.etat !== 'Refusé' && stage.dateRelance) {
-                if (stage.dateRelance < today) relanceHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> ${stage.dateRelance}</div>`;
-                else if (stage.dateRelance === today) relanceHtml = `<span class="badge bg-warning text-dark border border-dark">AUJ.</span>`;
-                else relanceHtml = `<span class="text-secondary small">${stage.dateRelance}</span>`;
-            }
-
-            let badgeClass = "bg-warning text-dark bg-opacity-75";
-            if(stage.etat === "Validé") badgeClass = "bg-success";
-            if(stage.etat === "Refusé") badgeClass = "bg-danger";
-            if(stage.etat === "Entretien") badgeClass = "bg-info text-dark";
-            let lienHtml = stage.lien ? `<a href="${stage.lien}" target="_blank" class="text-primary ms-1"><i class="bi bi-box-arrow-up-right"></i></a>` : '';
-
-            // LOGIQUE ADMIN POUR LES ACTIONS
-            let actionsHtml = '';
-            if (isAdmin) {
-                actionsHtml = `
-                    <div class="btn-group">
-                        <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${stage.id}"><i class="bi bi-pencil-fill"></i></button>
-                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${stage.id}"><i class="bi bi-trash-fill"></i></button>
-                    </div>`;
-            } else {
-                actionsHtml = `<span class="text-muted small"><i class="bi bi-eye"></i></span>`; // Juste un œil pour les invités
-            }
-
-            html += `
-                <tr>
-                    <td class="ps-3"><div class="fw-bold text-dark">${stage.entreprise} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td>
-                    <td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td>
-                    <td>${relanceHtml}</td>
-                    <td class="text-end pe-3">${actionsHtml}</td>
-                </tr>`;
-        });
-
-        tableBody.innerHTML = stages.length ? html : `<tr><td colspan="4" class="text-center py-4 text-muted">Aucun stage.</td></tr>`;
-        document.getElementById("loading").style.display = "none";
-        updateStats(stats);
-
-        // On attache les événements SEULEMENT si on est admin (sinon les boutons n'existent pas)
-        if (isAdmin) {
-            document.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', (e) => deleteStage(e.currentTarget.dataset.id)));
-            document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', (e) => { 
-                const stage = stages.find(s => s.id === e.currentTarget.dataset.id); 
-                editStage(stage); 
-            }));
-        }
-      });
-  }
-
-  // --- ACTIONS (Admin seulement) ---
-  document.getElementById("stageForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!isAdmin) return; // Sécurité JS
-
-    const docId = document.getElementById("docId").value;
-    const stageData = {
-        entreprise: document.getElementById("entreprise").value, poste: document.getElementById("poste").value,
-        lien: document.getElementById("lien").value, dateEnvoi: document.getElementById("dateEnvoi").value,
-        dateRelance: document.getElementById("dateRelance").value, etat: document.getElementById("etat").value, notes: document.getElementById("notes").value
-    };
-    try {
-        if (docId) await updateDoc(doc(db, "stages", docId), stageData);
-        else await addDoc(stagesCollection, stageData);
-        hideForm(); document.getElementById("stageForm").reset(); document.getElementById("docId").value = "";
-    } catch(err) { alert("Erreur : " + err.message); }
-  });
-
-  async function deleteStage(id) { if(isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id)); }
-
-  function editStage(stage) {
-    document.getElementById("docId").value = stage.id; document.getElementById("entreprise").value = stage.entreprise;
-    document.getElementById("poste").value = stage.poste; document.getElementById("lien").value = stage.lien || "";
-    document.getElementById("dateEnvoi").value = stage.dateEnvoi || ""; document.getElementById("dateRelance").value = stage.dateRelance || "";
-    document.getElementById("etat").value = stage.etat; document.getElementById("notes").value = stage.notes || "";
-    document.getElementById("form-title").innerText = "Modifier"; showForm();
-  }
-
-  function updateStats(stats) {
-    const c = document.getElementById("stats-container");
-    c.innerHTML = `<div class="col-3"><div class="p-2 bg-primary text-white rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.total}</h5><small style="font-size:0.7em">TOTAL</small></div></div><div class="col-3"><div class="p-2 bg-white border border-warning text-warning rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.attente}</h5><small style="font-size:0.7em">ATTENTE</small></div></div><div class="col-3"><div class="p-2 bg-info text-dark rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.entretien}</h5><small style="font-size:0.7em">ENTR.</small></div></div><div class="col-3"><div class="p-2 bg-success text-white rounded shadow-sm"><h5 class="m-0 fw-bold">${stats.valide}</h5><small style="font-size:0.7em">VALIDÉ</small></div></div>`;
-  }
-  document.getElementById('dateEnvoi').addEventListener('change', function() { if(this.value) { const d = new Date(this.value); d.setDate(d.getDate() + 7); document.getElementById('dateRelance').value = d.toISOString().split('T')[0]; } });
-  window.showForm = () => { document.getElementById("form-card").style.display = "block"; document.getElementById("form-title").innerText = "Ajouter"; document.getElementById("docId").value = ""; document.getElementById("stageForm").reset(); window.scrollTo(0, 0); };
-  window.hideForm = () => document.getElementById("form-card").style.display = "none";
-</script>
+<script type="module" src="app.js"></script>
 
 </body>
 </html>
