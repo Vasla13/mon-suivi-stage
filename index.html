@@ -3,25 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Suivi Stage Pro</title>
+    <title>Suivi Stage Master</title>
 
-    <!-- Bootstrap CSS -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
-    <!-- Icons -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
     />
-    <!-- Ton CSS -->
     <link rel="stylesheet" href="style.css" />
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
-      /* Styles spécifiques intégrés au cas où */
       #login-screen {
         position: fixed;
         top: 0;
@@ -56,13 +50,22 @@
         class="card p-4 shadow-lg text-center"
         style="max-width: 450px; width: 90%"
       >
-        <h1 class="mb-3">🚀</h1>
-        <h4 class="mb-4">Mon Suivi de Stage</h4>
-        <button id="btnGithubLogin" class="btn btn-dark btn-lg w-100 mb-3">
-          <i class="bi bi-github me-2"></i> Connexion GitHub
+        <h1 class="mb-3">🌍</h1>
+        <h4 class="mb-4">Hub de Stage</h4>
+
+        <!-- Bouton Admin -->
+        <button id="btnGithubLogin" class="btn btn-primary btn-lg w-100 mb-2">
+          <i class="bi bi-github me-2"></i> Connexion Admin (GitHub)
         </button>
-        <div class="alert alert-light border small text-muted">
-          Accès sécurisé. Visiteurs en lecture seule.
+
+        <!-- NOUVEAU : Bouton Invité -->
+        <button id="btnGuestLogin" class="btn btn-outline-secondary w-100 mb-3">
+          <i class="bi bi-person me-2"></i> Continuer en tant qu'invité
+        </button>
+
+        <div class="alert alert-light border small text-muted mt-2">
+          Accès sécurisé. Les invités sont en mode
+          <strong>lecture seule</strong>.
         </div>
         <div id="login-error" class="text-danger mt-2 fw-bold small"></div>
       </div>
@@ -76,7 +79,7 @@
           <div class="d-flex align-items-center">
             <img
               id="userAvatar"
-              src=""
+              src="https://ui-avatars.com/api/?name=Invité&background=random"
               class="rounded-circle me-2 border border-2 border-secondary shadow-sm"
               style="width: 40px; height: 40px"
             />
@@ -129,7 +132,7 @@
           </div>
         </div>
 
-        <!-- BARRE D'OUTILS (Recherche + Filtres) -->
+        <!-- BARRE D'OUTILS -->
         <div class="row g-2 mb-3 align-items-center">
           <div class="col-md-4">
             <div class="input-group">
@@ -230,7 +233,6 @@
                   />
                 </div>
               </div>
-
               <div class="mb-2">
                 <input
                   type="url"
@@ -239,7 +241,6 @@
                   placeholder="Lien de l'annonce"
                 />
               </div>
-
               <div class="mb-2">
                 <div class="input-group input-group-sm">
                   <span class="input-group-text text-primary"
@@ -249,40 +250,36 @@
                     type="url"
                     id="lienMail"
                     class="form-control"
-                    placeholder="Lien du mail (ex: https://mail.google...)"
+                    placeholder="Lien du mail"
                   />
                 </div>
               </div>
-
               <div class="row mb-2 bg-body-tertiary p-2 rounded border mx-0">
                 <div class="col-4">
-                  <label class="small text-muted">Envoyé le</label>
-                  <input
+                  <label class="small text-muted">Envoyé le</label
+                  ><input
                     type="date"
                     id="dateEnvoi"
                     class="form-control form-control-sm"
                   />
                 </div>
                 <div class="col-4">
-                  <label class="small text-primary fw-bold"
-                    >Relance (+7j)</label
-                  >
-                  <input
+                  <label class="small text-primary fw-bold">Relance (+7j)</label
+                  ><input
                     type="date"
                     id="dateRelance"
                     class="form-control form-control-sm border-primary"
                   />
                 </div>
                 <div class="col-4">
-                  <label class="small text-success fw-bold">Date Retour</label>
-                  <input
+                  <label class="small text-success fw-bold">Date Retour</label
+                  ><input
                     type="date"
                     id="dateStatut"
                     class="form-control form-control-sm border-success"
                   />
                 </div>
               </div>
-
               <div class="row mb-3">
                 <div class="col-6">
                   <label class="small fw-bold">État</label>
@@ -303,7 +300,6 @@
                   ></textarea>
                 </div>
               </div>
-
               <button
                 type="submit"
                 id="btnSave"
@@ -315,7 +311,7 @@
           </div>
         </div>
 
-        <!-- LISTE (TABLEAU) -->
+        <!-- LISTE -->
         <div class="card shadow-sm border-0">
           <div class="table-responsive">
             <table
