@@ -3,106 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi Stage Cloud</title>
+    <title>Suivi Stage Sécurisé</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #212529; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #app-content { display: none; }
+    </style>
 </head>
 <body>
 
-<div class="container mt-4 mb-5">
-    
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>🚀 Mon Suivi (Cloud)</h1>
-        <button onclick="showForm()" class="btn btn-dark">+ Nouveau Stage</button>
+<div id="login-screen">
+    <div class="card p-5 shadow-lg text-center" style="max-width: 400px; width: 90%;">
+        <h1 class="mb-4">🚀</h1>
+        <h4 class="mb-4">Mon Suivi de Stage</h4>
+        <button id="btnGithubLogin" class="btn btn-dark btn-lg w-100">
+            <i class="bi bi-github me-2"></i> Se connecter avec GitHub
+        </button>
+        <p id="login-error" class="text-danger mt-3 small"></p>
     </div>
+</div>
 
-    <div class="row mb-4 text-center" id="stats-container">
+<div id="app-content">
+    <div class="container mt-4 mb-5">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center">
+                <img id="userAvatar" src="" class="rounded-circle me-2" style="width: 32px; height: 32px;">
+                <h1 class="h4 mb-0">Mes Stages</h1>
+            </div>
+            <div>
+                <button onclick="showForm()" class="btn btn-dark btn-sm">+ Nouveau</button>
+                <button id="btnLogout" class="btn btn-outline-danger btn-sm ms-2"><i class="bi bi-box-arrow-right"></i></button>
+            </div>
         </div>
 
-    <div id="form-card" class="card shadow mb-4" style="display: none;">
-        <div class="card-header bg-primary text-white d-flex justify-content-between">
-            <h5 id="form-title">Ajouter un stage</h5>
-            <button onclick="hideForm()" class="btn btn-sm btn-light">x</button>
+        <div class="row mb-4 text-center gx-2" id="stats-container"></div>
+
+        <div id="form-card" class="card shadow mb-4" style="display: none;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between py-2">
+                <h6 id="form-title" class="mb-0 align-self-center">Ajouter</h6>
+                <button onclick="hideForm()" class="btn btn-sm btn-light py-0">x</button>
+            </div>
+            <div class="card-body">
+                <form id="stageForm">
+                    <input type="hidden" id="docId">
+                    <div class="row mb-2">
+                        <div class="col-6"><label class="small fw-bold">Entreprise</label><input type="text" id="entreprise" class="form-control form-control-sm" required></div>
+                        <div class="col-6"><label class="small fw-bold">Poste</label><input type="text" id="poste" class="form-control form-control-sm" required></div>
+                    </div>
+                    <div class="mb-2"><input type="url" id="lien" class="form-control form-control-sm" placeholder="Lien annonce"></div>
+                    <div class="row mb-2 bg-light p-2 rounded border mx-0">
+                        <div class="col-6"><label class="small text-muted">Envoyé le</label><input type="date" id="dateEnvoi" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="small text-primary fw-bold">Relance</label><input type="date" id="dateRelance" class="form-control form-control-sm border-primary"></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="small">État</label>
+                            <select id="etat" class="form-select form-select-sm">
+                                <option value="En attente">⏳ En attente</option>
+                                <option value="Entretien">🗣️ Entretien</option>
+                                <option value="Validé">✅ Validé</option>
+                                <option value="Refusé">❌ Refusé</option>
+                            </select>
+                        </div>
+                        <div class="col-6"><label class="small">Notes</label><textarea id="notes" class="form-control form-control-sm" rows="1"></textarea></div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 btn-sm">Enregistrer</button>
+                </form>
+            </div>
         </div>
-        <div class="card-body">
-            <form id="stageForm">
-                <input type="hidden" id="docId"> <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Entreprise</label>
-                        <input type="text" id="entreprise" class="form-control" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Intitulé Stage</label>
-                        <input type="text" id="poste" class="form-control" required>
-                    </div>
-                </div>
 
-                <div class="mb-3">
-                    <label class="form-label small">Lien annonce</label>
-                    <input type="url" id="lien" class="form-control form-control-sm">
-                </div>
-
-                <div class="row mb-3 bg-light p-2 rounded border mx-0">
-                    <div class="col-md-6">
-                        <label class="form-label">Date d'envoi</label>
-                        <input type="date" id="dateEnvoi" class="form-control">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-primary">Relance (+7j)</label>
-                        <input type="date" id="dateRelance" class="form-control border-primary">
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">État</label>
-                        <select id="etat" class="form-select">
-                            <option value="En attente">⏳ En attente</option>
-                            <option value="Entretien">🗣️ Entretien</option>
-                            <option value="Validé">✅ Validé</option>
-                            <option value="Refusé">❌ Refusé</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Notes</label>
-                        <textarea id="notes" class="form-control" rows="1"></textarea>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-success w-100">Enregistrer</button>
-            </form>
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                    <thead class="table-secondary">
+                        <tr><th class="ps-3">Candidature</th><th>État</th><th>Relance</th><th class="text-end pe-3">Action</th></tr>
+                    </thead>
+                    <tbody id="stages-table-body"></tbody>
+                </table>
+            </div>
+            <div id="loading" class="text-center p-4 text-muted small">Chargement...</div>
         </div>
     </div>
-
-    <div class="card shadow-sm border-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-secondary">
-                    <tr>
-                        <th class="ps-3">Entreprise / Poste</th>
-                        <th>État</th>
-                        <th>Relance</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="stages-table-body">
-                    </tbody>
-            </table>
-        </div>
-        <div id="loading" class="text-center p-4">Chargement des données...</div>
-    </div>
-
 </div>
 
 <script type="module">
-  // Import des fonctions nécessaires
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  // Import GithubAuthProvider
+  import { getAuth, signInWithPopup, GithubAuthProvider, signOut, onAuthStateChanged } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } 
     from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   // -----------------------------------------------------------
-  // 🔴 COLLE TA CONFIGURATION FIREBASE ICI (Étape 1)
+  // 🔴 COLLE TA CONFIGURATION FIREBASE ICI
   // -----------------------------------------------------------
   const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
@@ -115,173 +115,113 @@
 };
   // -----------------------------------------------------------
 
-  // Initialisation
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
   const stagesCollection = collection(db, "stages");
+  const provider = new GithubAuthProvider(); // Le fournisseur GitHub
 
-  // --- 1. AFFICHAGE EN TEMPS RÉEL ---
-  // Cette fonction écoute la base de données en permanence
-  onSnapshot(stagesCollection, (snapshot) => {
-    const tableBody = document.getElementById("stages-table-body");
-    const loading = document.getElementById("loading");
-    let html = "";
-    let stats = { total: 0, attente: 0, entretien: 0, valide: 0 };
-    let stages = [];
-
-    snapshot.forEach((doc) => {
-        let data = doc.data();
-        data.id = doc.id;
-        stages.push(data);
-        
-        // Stats
-        stats.total++;
-        if(data.etat === "En attente") stats.attente++;
-        if(data.etat === "Entretien") stats.entretien++;
-        if(data.etat === "Validé") stats.valide++;
-    });
-
-    // Tri (Urgence d'abord)
-    stages.sort((a, b) => {
-        if (a.dateRelance && !b.dateRelance) return -1;
-        if (!a.dateRelance && b.dateRelance) return 1;
-        if (a.dateRelance && b.dateRelance) return new Date(a.dateRelance) - new Date(b.dateRelance);
-        return 0;
-    });
-
-    const today = new Date().toISOString().split('T')[0];
-
-    stages.forEach(stage => {
-        // Logique couleur Relance
-        let relanceHtml = '<span class="text-muted small">-</span>';
-        if (stage.etat !== 'Validé' && stage.etat !== 'Refusé' && stage.dateRelance) {
-            if (stage.dateRelance < today) relanceHtml = `<span class="text-danger fw-bold">⚠️ ${stage.dateRelance}</span>`;
-            else if (stage.dateRelance === today) relanceHtml = `<span class="badge bg-warning text-dark">AUJOURD'HUI</span>`;
-            else relanceHtml = `<span class="text-muted">${stage.dateRelance}</span>`;
-        }
-
-        // Logique couleur État
-        let badgeClass = "bg-warning text-dark";
-        if(stage.etat === "Validé") badgeClass = "bg-success";
-        if(stage.etat === "Refusé") badgeClass = "bg-danger";
-        if(stage.etat === "Entretien") badgeClass = "bg-info text-dark";
-
-        let lienHtml = stage.lien ? `<a href="${stage.lien}" target="_blank" class="text-primary ms-1"><i class="bi bi-link-45deg"></i></a>` : '';
-
-        html += `
-            <tr>
-                <td class="ps-3">
-                    <div class="fw-bold">${stage.entreprise} ${lienHtml}</div>
-                    <div class="small text-muted">${stage.poste}</div>
-                </td>
-                <td><span class="badge ${badgeClass}">${stage.etat}</span></td>
-                <td>${relanceHtml}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${stage.id}"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${stage.id}"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>
-        `;
-    });
-
-    tableBody.innerHTML = html;
-    loading.style.display = "none";
-    updateStats(stats);
-
-    // Attacher les événements aux boutons (parce qu'ils sont créés dynamiquement)
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', (e) => deleteStage(e.currentTarget.dataset.id));
-    });
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const stage = stages.find(s => s.id === e.currentTarget.dataset.id);
-            editStage(stage);
-        });
-    });
+  // --- GESTION LOGIN GITHUB ---
+  
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("app-content").style.display = "block";
+        // Petit bonus : on affiche ton avatar GitHub
+        if(user.photoURL) document.getElementById("userAvatar").src = user.photoURL;
+        chargerDonnees();
+    } else {
+        document.getElementById("login-screen").style.display = "flex";
+        document.getElementById("app-content").style.display = "none";
+    }
   });
 
-  // --- 2. AJOUT / MODIFICATION ---
+  // Bouton Login GitHub
+  document.getElementById("btnGithubLogin").addEventListener("click", () => {
+    signInWithPopup(auth, provider)
+        .catch((error) => {
+            document.getElementById("login-error").innerText = "Erreur de connexion : " + error.message;
+        });
+  });
+
+  document.getElementById("btnLogout").addEventListener("click", () => signOut(auth));
+
+  // --- RESTE DU CODE (CRUD) ---
+  function chargerDonnees() {
+      onSnapshot(stagesCollection, (snapshot) => {
+        const tableBody = document.getElementById("stages-table-body");
+        const loading = document.getElementById("loading");
+        let html = "";
+        let stats = { total: 0, attente: 0, entretien: 0, valide: 0 };
+        let stages = [];
+
+        snapshot.forEach((doc) => {
+            let data = doc.data(); data.id = doc.id; stages.push(data);
+            stats.total++;
+            if(data.etat === "En attente") stats.attente++;
+            if(data.etat === "Entretien") stats.entretien++;
+            if(data.etat === "Validé") stats.valide++;
+        });
+
+        stages.sort((a, b) => {
+            if (a.dateRelance && !b.dateRelance) return -1;
+            if (!a.dateRelance && b.dateRelance) return 1;
+            if (a.dateRelance && b.dateRelance) return new Date(a.dateRelance) - new Date(b.dateRelance);
+            return 0;
+        });
+        const today = new Date().toISOString().split('T')[0];
+
+        stages.forEach(stage => {
+            let relanceHtml = '<span class="text-muted">-</span>';
+            if (stage.etat !== 'Validé' && stage.etat !== 'Refusé' && stage.dateRelance) {
+                if (stage.dateRelance < today) relanceHtml = `<span class="text-danger fw-bold">⚠️ ${stage.dateRelance}</span>`;
+                else if (stage.dateRelance === today) relanceHtml = `<span class="badge bg-warning text-dark">Auj.</span>`;
+                else relanceHtml = `<span class="text-muted small">${stage.dateRelance}</span>`;
+            }
+            let badgeClass = "bg-warning text-dark";
+            if(stage.etat === "Validé") badgeClass = "bg-success";
+            if(stage.etat === "Refusé") badgeClass = "bg-danger";
+            if(stage.etat === "Entretien") badgeClass = "bg-info text-dark";
+            let lienHtml = stage.lien ? `<a href="${stage.lien}" target="_blank" class="text-primary"><i class="bi bi-link-45deg"></i></a>` : '';
+
+            html += `<tr><td class="ps-3"><div class="fw-bold text-dark">${stage.entreprise} ${lienHtml}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass}" style="font-size:0.7em">${stage.etat}</span></td><td>${relanceHtml}</td><td class="text-end pe-3"><button class="btn btn-sm btn-outline-secondary btn-edit p-1 px-2" data-id="${stage.id}"><i class="bi bi-pencil"></i></button> <button class="btn btn-sm btn-outline-danger btn-delete p-1 px-2" data-id="${stage.id}"><i class="bi bi-trash"></i></button></td></tr>`;
+        });
+        tableBody.innerHTML = html; loading.style.display = "none"; updateStats(stats);
+        document.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', (e) => deleteStage(e.currentTarget.dataset.id)));
+        document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', (e) => { const stage = stages.find(s => s.id === e.currentTarget.dataset.id); editStage(stage); }));
+      });
+  }
+
   document.getElementById("stageForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    
     const docId = document.getElementById("docId").value;
     const stageData = {
-        entreprise: document.getElementById("entreprise").value,
-        poste: document.getElementById("poste").value,
-        lien: document.getElementById("lien").value,
-        dateEnvoi: document.getElementById("dateEnvoi").value,
-        dateRelance: document.getElementById("dateRelance").value,
-        etat: document.getElementById("etat").value,
-        notes: document.getElementById("notes").value
+        entreprise: document.getElementById("entreprise").value, poste: document.getElementById("poste").value,
+        lien: document.getElementById("lien").value, dateEnvoi: document.getElementById("dateEnvoi").value,
+        dateRelance: document.getElementById("dateRelance").value, etat: document.getElementById("etat").value, notes: document.getElementById("notes").value
     };
-
-    if (docId) {
-        // Modification
-        await updateDoc(doc(db, "stages", docId), stageData);
-    } else {
-        // Création
-        await addDoc(stagesCollection, stageData);
-    }
-    
-    hideForm();
-    document.getElementById("stageForm").reset();
-    document.getElementById("docId").value = "";
+    try {
+        if (docId) await updateDoc(doc(db, "stages", docId), stageData); else await addDoc(stagesCollection, stageData);
+        hideForm(); document.getElementById("stageForm").reset(); document.getElementById("docId").value = "";
+    } catch(err) { alert("Erreur : Non autorisé !"); }
   });
 
-  // --- 3. SUPPRESSION ---
-  async function deleteStage(id) {
-    if(confirm("Supprimer ce stage ?")) {
-        await deleteDoc(doc(db, "stages", id));
-    }
-  }
+  async function deleteStage(id) { if(confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id)); }
 
-  // --- FONCTIONS UTILITAIRES ---
-  
-  // Remplir le formulaire pour modification
   function editStage(stage) {
-    document.getElementById("docId").value = stage.id;
-    document.getElementById("entreprise").value = stage.entreprise;
-    document.getElementById("poste").value = stage.poste;
-    document.getElementById("lien").value = stage.lien || "";
-    document.getElementById("dateEnvoi").value = stage.dateEnvoi || "";
-    document.getElementById("dateRelance").value = stage.dateRelance || "";
-    document.getElementById("etat").value = stage.etat;
-    document.getElementById("notes").value = stage.notes || "";
-    
-    document.getElementById("form-title").innerText = "Modifier le stage";
-    showForm();
+    document.getElementById("docId").value = stage.id; document.getElementById("entreprise").value = stage.entreprise;
+    document.getElementById("poste").value = stage.poste; document.getElementById("lien").value = stage.lien || "";
+    document.getElementById("dateEnvoi").value = stage.dateEnvoi || ""; document.getElementById("dateRelance").value = stage.dateRelance || "";
+    document.getElementById("etat").value = stage.etat; document.getElementById("notes").value = stage.notes || "";
+    document.getElementById("form-title").innerText = "Modifier"; showForm();
   }
-
   function updateStats(stats) {
-    const container = document.getElementById("stats-container");
-    container.innerHTML = `
-        <div class="col-3"><div class="p-2 bg-primary text-white rounded"><h5>${stats.total}</h5><small>Total</small></div></div>
-        <div class="col-3"><div class="p-2 bg-white border border-warning text-warning rounded"><h5>${stats.attente}</h5><small>Attente</small></div></div>
-        <div class="col-3"><div class="p-2 bg-info text-dark rounded"><h5>${stats.entretien}</h5><small>Entr.</small></div></div>
-        <div class="col-3"><div class="p-2 bg-success text-white rounded"><h5>${stats.valide}</h5><small>Validé</small></div></div>
-    `;
+    const c = document.getElementById("stats-container");
+    c.innerHTML = `<div class="col-3"><div class="p-1 bg-primary text-white rounded"><h5>${stats.total}</h5><small style="font-size:0.7em">Total</small></div></div><div class="col-3"><div class="p-1 bg-white border border-warning text-warning rounded"><h5>${stats.attente}</h5><small style="font-size:0.7em">Attente</small></div></div><div class="col-3"><div class="p-1 bg-info text-dark rounded"><h5>${stats.entretien}</h5><small style="font-size:0.7em">Entr.</small></div></div><div class="col-3"><div class="p-1 bg-success text-white rounded"><h5>${stats.valide}</h5><small style="font-size:0.7em">Validé</small></div></div>`;
   }
-
-  // Calcul automatique de la date
-  document.getElementById('dateEnvoi').addEventListener('change', function() {
-    const dateStr = this.value;
-    if(dateStr) {
-        const date = new Date(dateStr);
-        date.setDate(date.getDate() + 7);
-        document.getElementById('dateRelance').value = date.toISOString().split('T')[0];
-    }
-  });
-
-  // Rendre les fonctions globales pour les boutons HTML
-  window.showForm = () => {
-      document.getElementById("form-card").style.display = "block";
-      document.getElementById("form-title").innerText = "Ajouter un stage";
-      document.getElementById("docId").value = "";
-      document.getElementById("stageForm").reset();
-  };
+  document.getElementById('dateEnvoi').addEventListener('change', function() { if(this.value) { const d = new Date(this.value); d.setDate(d.getDate() + 7); document.getElementById('dateRelance').value = d.toISOString().split('T')[0]; } });
+  window.showForm = () => { document.getElementById("form-card").style.display = "block"; document.getElementById("form-title").innerText = "Ajouter"; document.getElementById("docId").value = ""; document.getElementById("stageForm").reset(); };
   window.hideForm = () => document.getElementById("form-card").style.display = "none";
-
 </script>
-
 </body>
 </html>
