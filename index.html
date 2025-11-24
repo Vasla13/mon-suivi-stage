@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi Stage Cloud</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container mt-4 mb-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🚀 Mon Suivi (Cloud)</h1>
+        <button onclick="showForm()" class="btn btn-dark">+ Nouveau Stage</button>
+    </div>
+
+    <div class="row mb-4 text-center" id="stats-container">
+        </div>
+
+    <div id="form-card" class="card shadow mb-4" style="display: none;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between">
+            <h5 id="form-title">Ajouter un stage</h5>
+            <button onclick="hideForm()" class="btn btn-sm btn-light">x</button>
+        </div>
+        <div class="card-body">
+            <form id="stageForm">
+                <input type="hidden" id="docId"> <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Entreprise</label>
+                        <input type="text" id="entreprise" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Intitulé Stage</label>
+                        <input type="text" id="poste" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">Lien annonce</label>
+                    <input type="url" id="lien" class="form-control form-control-sm">
+                </div>
+
+                <div class="row mb-3 bg-light p-2 rounded border mx-0">
+                    <div class="col-md-6">
+                        <label class="form-label">Date d'envoi</label>
+                        <input type="date" id="dateEnvoi" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-primary">Relance (+7j)</label>
+                        <input type="date" id="dateRelance" class="form-control border-primary">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">État</label>
+                        <select id="etat" class="form-select">
+                            <option value="En attente">⏳ En attente</option>
+                            <option value="Entretien">🗣️ Entretien</option>
+                            <option value="Validé">✅ Validé</option>
+                            <option value="Refusé">❌ Refusé</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Notes</label>
+                        <textarea id="notes" class="form-control" rows="1"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-secondary">
+                    <tr>
+                        <th class="ps-3">Entreprise / Poste</th>
+                        <th>État</th>
+                        <th>Relance</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="stages-table-body">
+                    </tbody>
+            </table>
+        </div>
+        <div id="loading" class="text-center p-4">Chargement des données...</div>
+    </div>
+
+</div>
+
+<script type="module">
+  // Import des fonctions nécessaires
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // -----------------------------------------------------------
+  // 🔴 COLLE TA CONFIGURATION FIREBASE ICI (Étape 1)
+  // -----------------------------------------------------------
+  const firebaseConfig = {
+  apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
+  authDomain: "mon-suivi-stage.firebaseapp.com",
+  projectId: "mon-suivi-stage",
+  storageBucket: "mon-suivi-stage.firebasestorage.app",
+  messagingSenderId: "134252253002",
+  appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
+  measurementId: "G-GL4HPEBLRW"
+};
+  // -----------------------------------------------------------
+
+  // Initialisation
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const stagesCollection = collection(db, "stages");
+
+  // --- 1. AFFICHAGE EN TEMPS RÉEL ---
+  // Cette fonction écoute la base de données en permanence
+  onSnapshot(stagesCollection, (snapshot) => {
+    const tableBody = document.getElementById("stages-table-body");
+    const loading = document.getElementById("loading");
+    let html = "";
+    let stats = { total: 0, attente: 0, entretien: 0, valide: 0 };
+    let stages = [];
+
+    snapshot.forEach((doc) => {
+        let data = doc.data();
+        data.id = doc.id;
+        stages.push(data);
+        
+        // Stats
+        stats.total++;
+        if(data.etat === "En attente") stats.attente++;
+        if(data.etat === "Entretien") stats.entretien++;
+        if(data.etat === "Validé") stats.valide++;
+    });
+
+    // Tri (Urgence d'abord)
+    stages.sort((a, b) => {
+        if (a.dateRelance && !b.dateRelance) return -1;
+        if (!a.dateRelance && b.dateRelance) return 1;
+        if (a.dateRelance && b.dateRelance) return new Date(a.dateRelance) - new Date(b.dateRelance);
+        return 0;
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+
+    stages.forEach(stage => {
+        // Logique couleur Relance
+        let relanceHtml = '<span class="text-muted small">-</span>';
+        if (stage.etat !== 'Validé' && stage.etat !== 'Refusé' && stage.dateRelance) {
+            if (stage.dateRelance < today) relanceHtml = `<span class="text-danger fw-bold">⚠️ ${stage.dateRelance}</span>`;
+            else if (stage.dateRelance === today) relanceHtml = `<span class="badge bg-warning text-dark">AUJOURD'HUI</span>`;
+            else relanceHtml = `<span class="text-muted">${stage.dateRelance}</span>`;
+        }
+
+        // Logique couleur État
+        let badgeClass = "bg-warning text-dark";
+        if(stage.etat === "Validé") badgeClass = "bg-success";
+        if(stage.etat === "Refusé") badgeClass = "bg-danger";
+        if(stage.etat === "Entretien") badgeClass = "bg-info text-dark";
+
+        let lienHtml = stage.lien ? `<a href="${stage.lien}" target="_blank" class="text-primary ms-1"><i class="bi bi-link-45deg"></i></a>` : '';
+
+        html += `
+            <tr>
+                <td class="ps-3">
+                    <div class="fw-bold">${stage.entreprise} ${lienHtml}</div>
+                    <div class="small text-muted">${stage.poste}</div>
+                </td>
+                <td><span class="badge ${badgeClass}">${stage.etat}</span></td>
+                <td>${relanceHtml}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-secondary btn-edit" data-id="${stage.id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${stage.id}"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = html;
+    loading.style.display = "none";
+    updateStats(stats);
+
+    // Attacher les événements aux boutons (parce qu'ils sont créés dynamiquement)
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => deleteStage(e.currentTarget.dataset.id));
+    });
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const stage = stages.find(s => s.id === e.currentTarget.dataset.id);
+            editStage(stage);
+        });
+    });
+  });
+
+  // --- 2. AJOUT / MODIFICATION ---
+  document.getElementById("stageForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const docId = document.getElementById("docId").value;
+    const stageData = {
+        entreprise: document.getElementById("entreprise").value,
+        poste: document.getElementById("poste").value,
+        lien: document.getElementById("lien").value,
+        dateEnvoi: document.getElementById("dateEnvoi").value,
+        dateRelance: document.getElementById("dateRelance").value,
+        etat: document.getElementById("etat").value,
+        notes: document.getElementById("notes").value
+    };
+
+    if (docId) {
+        // Modification
+        await updateDoc(doc(db, "stages", docId), stageData);
+    } else {
+        // Création
+        await addDoc(stagesCollection, stageData);
+    }
+    
+    hideForm();
+    document.getElementById("stageForm").reset();
+    document.getElementById("docId").value = "";
+  });
+
+  // --- 3. SUPPRESSION ---
+  async function deleteStage(id) {
+    if(confirm("Supprimer ce stage ?")) {
+        await deleteDoc(doc(db, "stages", id));
+    }
+  }
+
+  // --- FONCTIONS UTILITAIRES ---
+  
+  // Remplir le formulaire pour modification
+  function editStage(stage) {
+    document.getElementById("docId").value = stage.id;
+    document.getElementById("entreprise").value = stage.entreprise;
+    document.getElementById("poste").value = stage.poste;
+    document.getElementById("lien").value = stage.lien || "";
+    document.getElementById("dateEnvoi").value = stage.dateEnvoi || "";
+    document.getElementById("dateRelance").value = stage.dateRelance || "";
+    document.getElementById("etat").value = stage.etat;
+    document.getElementById("notes").value = stage.notes || "";
+    
+    document.getElementById("form-title").innerText = "Modifier le stage";
+    showForm();
+  }
+
+  function updateStats(stats) {
+    const container = document.getElementById("stats-container");
+    container.innerHTML = `
+        <div class="col-3"><div class="p-2 bg-primary text-white rounded"><h5>${stats.total}</h5><small>Total</small></div></div>
+        <div class="col-3"><div class="p-2 bg-white border border-warning text-warning rounded"><h5>${stats.attente}</h5><small>Attente</small></div></div>
+        <div class="col-3"><div class="p-2 bg-info text-dark rounded"><h5>${stats.entretien}</h5><small>Entr.</small></div></div>
+        <div class="col-3"><div class="p-2 bg-success text-white rounded"><h5>${stats.valide}</h5><small>Validé</small></div></div>
+    `;
+  }
+
+  // Calcul automatique de la date
+  document.getElementById('dateEnvoi').addEventListener('change', function() {
+    const dateStr = this.value;
+    if(dateStr) {
+        const date = new Date(dateStr);
+        date.setDate(date.getDate() + 7);
+        document.getElementById('dateRelance').value = date.toISOString().split('T')[0];
+    }
+  });
+
+  // Rendre les fonctions globales pour les boutons HTML
+  window.showForm = () => {
+      document.getElementById("form-card").style.display = "block";
+      document.getElementById("form-title").innerText = "Ajouter un stage";
+      document.getElementById("docId").value = "";
+      document.getElementById("stageForm").reset();
+  };
+  window.hideForm = () => document.getElementById("form-card").style.display = "none";
+
+</script>
+
+</body>
+</html>
