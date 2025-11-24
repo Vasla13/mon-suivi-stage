@@ -1,83 +1,52 @@
-/* --- CONFIGURATION GLOBALE --- */
-body { 
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* --- ÉCRAN DE CONNEXION --- */
-#login-screen {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #212529; z-index: 9999;
-    display: flex; justify-content: center; align-items: center;
-}
+/* --- GLOBAL --- */
+body { font-family: 'Segoe UI', sans-serif; transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
+#login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #212529; z-index: 9999; display: flex; justify-content: center; align-items: center; }
 #app-content { display: none; }
-
-/* --- UTILITAIRES --- */
-.card { 
-    border: none; 
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    transition: background-color 0.3s ease;
-}
 .admin-only { display: none !important; }
-.chart-container { position: relative; height: 160px; width: 100%; display: flex; justify-content: center; }
+.chart-container { position: relative; height: 100px; width: 100%; display: flex; justify-content: center; }
 
-/* =========================================================
-   🌙 DARK MODE PREMIUM
-   ========================================================= */
-
-[data-bs-theme="dark"] body {
-    background-color: #121212 !important;
-    color: #e0e0e0;
+/* --- MODAL FORMULAIRE (Style Trello) --- */
+#form-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); z-index: 2000;
+    display: flex; justify-content: center; align-items: center;
+    backdrop-filter: blur(3px);
 }
+.form-modal { width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto; border-radius: 12px; border: none; }
 
-/* CARTES ET CONTENEURS */
-[data-bs-theme="dark"] .card {
-    background-color: #1e1e1e;
-    border: 1px solid #333;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+/* --- KANBAN BOARD --- */
+.kanban-container {
+    display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;
+    min-height: 600px; align-items: stretch;
 }
-
-/* TABLEAU */
-[data-bs-theme="dark"] .table {
-    color: #d0d0d0;
-    --bs-table-hover-bg: #2c2c2c;
-    --bs-table-border-color: #333;
+.kanban-column {
+    flex: 0 0 300px; /* Largeur fixe colonne */
+    background: #f8f9fa; border-radius: 8px; padding: 10px;
+    display: flex; flex-direction: column; gap: 10px;
+    border: 1px solid #dee2e6;
 }
-/* En-tête Tableau */
-[data-bs-theme="dark"] .table-secondary {
-    background-color: #2d2d2d !important; 
-    color: #fff !important;
-    --bs-table-bg: #2d2d2d;
+.kanban-header { font-weight: bold; text-transform: uppercase; font-size: 0.85rem; padding: 5px; border-bottom: 2px solid #ccc; margin-bottom: 5px; display: flex; justify-content: space-between; }
+.kanban-card {
+    background: white; padding: 12px; border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer;
+    border-left: 4px solid transparent; transition: transform 0.1s;
 }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.kanban-card small { display: block; color: #6c757d; font-size: 0.8rem; margin-top: 4px; }
 
-/* FORMULAIRES & INPUTS */
-[data-bs-theme="dark"] .form-control, 
-[data-bs-theme="dark"] .form-select,
-[data-bs-theme="dark"] .input-group-text {
-    background-color: #252525;
-    border-color: #444;
-    color: #fff;
-}
-[data-bs-theme="dark"] .form-control::placeholder { color: #888; }
-[data-bs-theme="dark"] .form-control:focus { background-color: #2a2a2a; border-color: #0d6efd; color: #fff; }
+/* Couleurs Bordures Kanban */
+.border-attente { border-left-color: #ffc107; }
+.border-entretien { border-left-color: #0dcaf0; }
+.border-suite { border-left-color: #6610f2; }
+.border-valide { border-left-color: #198754; }
+.border-refuse { border-left-color: #dc3545; }
 
-/* BOUTONS DE FILTRE */
-[data-bs-theme="dark"] .btn-group .btn-outline-secondary,
-[data-bs-theme="dark"] .btn-group .btn-outline-warning,
-[data-bs-theme="dark"] .btn-group .btn-outline-info,
-[data-bs-theme="dark"] .btn-group .btn-outline-success,
-[data-bs-theme="dark"] .btn-group .btn-outline-primary {
-    background-color: transparent; border-color: #555; color: #ccc;
-}
-
-[data-bs-theme="dark"] .btn-group .btn-outline-secondary:hover, [data-bs-theme="dark"] .btn-group .btn-outline-secondary.active { background-color: #6c757d; color: #fff; border-color: #6c757d; }
-[data-bs-theme="dark"] .btn-group .btn-outline-warning:hover, [data-bs-theme="dark"] .btn-group .btn-outline-warning.active { background-color: #ffc107; color: #000; border-color: #ffc107; }
-[data-bs-theme="dark"] .btn-group .btn-outline-info:hover, [data-bs-theme="dark"] .btn-group .btn-outline-info.active { background-color: #0dcaf0; color: #000; border-color: #0dcaf0; }
-[data-bs-theme="dark"] .btn-group .btn-outline-success:hover, [data-bs-theme="dark"] .btn-group .btn-outline-success.active { background-color: #198754; color: #fff; border-color: #198754; }
-[data-bs-theme="dark"] .btn-group .btn-outline-primary:hover, [data-bs-theme="dark"] .btn-group .btn-outline-primary.active { background-color: #0d6efd; color: #fff; border-color: #0d6efd; }
-
-/* TEXTES */
-[data-bs-theme="dark"] .text-muted { color: #888 !important; }
-[data-bs-theme="dark"] a { color: #6ea8fe; }
-[data-bs-theme="dark"] .text-body { color: #e0e0e0 !important; }
-[data-bs-theme="dark"] .alert-light { background-color: #2c2c2c; border-color: #444; color: #ccc; }
+/* --- DARK MODE --- */
+[data-bs-theme="dark"] body { background-color: #121212 !important; color: #e0e0e0; }
+[data-bs-theme="dark"] .card, [data-bs-theme="dark"] .form-modal { background-color: #1e1e1e; border: 1px solid #333; }
+[data-bs-theme="dark"] .table { color: #d0d0d0; --bs-table-hover-bg: #2c2c2c; }
+[data-bs-theme="dark"] .form-control, [data-bs-theme="dark"] .form-select, [data-bs-theme="dark"] .input-group-text { background-color: #252525; border-color: #444; color: #fff; }
+[data-bs-theme="dark"] .kanban-column { background-color: #252525; border-color: #444; }
+[data-bs-theme="dark"] .kanban-card { background-color: #2e2e2e; color: #e0e0e0; }
+[data-bs-theme="dark"] .kanban-card:hover { background-color: #363636; }
+[data-bs-theme="dark"] .leaflet-popup-content-wrapper, [data-bs-theme="dark"] .leaflet-popup-tip { background: #333; color: #fff; }
