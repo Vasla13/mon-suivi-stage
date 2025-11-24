@@ -22,7 +22,7 @@ body {
 .chart-container { position: relative; height: 160px; width: 100%; display: flex; justify-content: center; }
 
 /* =========================================================
-   🌙 DARK MODE PREMIUM (CORRIGÉ)
+   🌙 DARK MODE PREMIUM
    ========================================================= */
 
 [data-bs-theme="dark"] body {
@@ -30,27 +30,27 @@ body {
     color: #e0e0e0;
 }
 
-/* 1. CARTES ET CONTENEURS */
+/* CARTES ET CONTENEURS */
 [data-bs-theme="dark"] .card {
     background-color: #1e1e1e;
     border: 1px solid #333;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 
-/* 2. TABLEAU (CORRECTION EN-TÊTE) */
+/* TABLEAU */
 [data-bs-theme="dark"] .table {
     color: #d0d0d0;
     --bs-table-hover-bg: #2c2c2c;
     --bs-table-border-color: #333;
 }
-/* On force l'en-tête (Gris foncé au lieu de gris clair) */
+/* En-tête Tableau */
 [data-bs-theme="dark"] .table-secondary {
     background-color: #2d2d2d !important; 
     color: #fff !important;
     --bs-table-bg: #2d2d2d;
 }
 
-/* 3. FORMULAIRES & INPUTS */
+/* FORMULAIRES & INPUTS */
 [data-bs-theme="dark"] .form-control, 
 [data-bs-theme="dark"] .form-select,
 [data-bs-theme="dark"] .input-group-text {
@@ -58,55 +58,26 @@ body {
     border-color: #444;
     color: #fff;
 }
-[data-bs-theme="dark"] .form-control::placeholder {
-    color: #888;
-}
-[data-bs-theme="dark"] .form-control:focus {
-    background-color: #2a2a2a;
-    border-color: #0d6efd;
-    color: #fff;
-}
+[data-bs-theme="dark"] .form-control::placeholder { color: #888; }
+[data-bs-theme="dark"] .form-control:focus { background-color: #2a2a2a; border-color: #0d6efd; color: #fff; }
 
-/* 4. BOUTONS DE FILTRE (CORRECTION MAJEURE) */
-/* Par défaut, les bordures sont trop sombres, on les éclaircit */
+/* BOUTONS DE FILTRE */
 [data-bs-theme="dark"] .btn-group .btn-outline-secondary,
 [data-bs-theme="dark"] .btn-group .btn-outline-warning,
 [data-bs-theme="dark"] .btn-group .btn-outline-info,
-[data-bs-theme="dark"] .btn-group .btn-outline-success {
-    background-color: transparent; /* Fond transparent par défaut */
-    border-color: #555;            /* Bordure visible */
-    color: #ccc;                   /* Texte clair */
+[data-bs-theme="dark"] .btn-group .btn-outline-success,
+[data-bs-theme="dark"] .btn-group .btn-outline-primary {
+    background-color: transparent; border-color: #555; color: #ccc;
 }
 
-/* Au survol ou actif : on met la couleur vive */
-[data-bs-theme="dark"] .btn-group .btn-outline-secondary:hover,
-[data-bs-theme="dark"] .btn-group .btn-outline-secondary.active {
-    background-color: #6c757d; color: #fff; border-color: #6c757d;
-}
+[data-bs-theme="dark"] .btn-group .btn-outline-secondary:hover, [data-bs-theme="dark"] .btn-group .btn-outline-secondary.active { background-color: #6c757d; color: #fff; border-color: #6c757d; }
+[data-bs-theme="dark"] .btn-group .btn-outline-warning:hover, [data-bs-theme="dark"] .btn-group .btn-outline-warning.active { background-color: #ffc107; color: #000; border-color: #ffc107; }
+[data-bs-theme="dark"] .btn-group .btn-outline-info:hover, [data-bs-theme="dark"] .btn-group .btn-outline-info.active { background-color: #0dcaf0; color: #000; border-color: #0dcaf0; }
+[data-bs-theme="dark"] .btn-group .btn-outline-success:hover, [data-bs-theme="dark"] .btn-group .btn-outline-success.active { background-color: #198754; color: #fff; border-color: #198754; }
+[data-bs-theme="dark"] .btn-group .btn-outline-primary:hover, [data-bs-theme="dark"] .btn-group .btn-outline-primary.active { background-color: #0d6efd; color: #fff; border-color: #0d6efd; }
 
-[data-bs-theme="dark"] .btn-group .btn-outline-warning:hover,
-[data-bs-theme="dark"] .btn-group .btn-outline-warning.active {
-    background-color: #ffc107; color: #000; border-color: #ffc107;
-}
-
-[data-bs-theme="dark"] .btn-group .btn-outline-info:hover,
-[data-bs-theme="dark"] .btn-group .btn-outline-info.active {
-    background-color: #0dcaf0; color: #000; border-color: #0dcaf0;
-}
-
-[data-bs-theme="dark"] .btn-group .btn-outline-success:hover,
-[data-bs-theme="dark"] .btn-group .btn-outline-success.active {
-    background-color: #198754; color: #fff; border-color: #198754;
-}
-
-/* 5. TEXTES ET LIENS */
+/* TEXTES */
 [data-bs-theme="dark"] .text-muted { color: #888 !important; }
-[data-bs-theme="dark"] a { color: #6ea8fe; } /* Bleu plus clair pour les liens */
+[data-bs-theme="dark"] a { color: #6ea8fe; }
 [data-bs-theme="dark"] .text-body { color: #e0e0e0 !important; }
-
-/* 6. ALERTES */
-[data-bs-theme="dark"] .alert-light {
-    background-color: #2c2c2c;
-    border-color: #444;
-    color: #ccc;
-}
+[data-bs-theme="dark"] .alert-light { background-color: #2c2c2c; border-color: #444; color: #ccc; }

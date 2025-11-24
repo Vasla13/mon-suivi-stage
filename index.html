@@ -9,11 +9,10 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Styles spécifiques intégrés si le CSS ne charge pas tout de suite */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #212529; z-index: 9999; display: flex; justify-content: center; align-items: center; }
         #app-content { display: none; }
-        .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
         .admin-only { display: none !important; }
-        body { transition: background-color 0.3s, color 0.3s; }
         .chart-container { position: relative; height: 160px; width: 100%; display: flex; justify-content: center; }
     </style>
 </head>
@@ -32,6 +31,7 @@
 <div id="app-content">
     <div class="container mt-4 mb-5">
         
+        <!-- HEADER -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center">
                 <img id="userAvatar" src="" class="rounded-circle me-2 border border-2 border-secondary shadow-sm" style="width: 40px; height: 40px;">
@@ -44,24 +44,29 @@
             </div>
         </div>
 
+        <!-- STATS -->
         <div class="row mb-4 align-items-center">
             <div class="col-md-3 mb-3 mb-md-0"><div class="card shadow-sm p-2"><div class="chart-container"><canvas id="statsChart"></canvas></div></div></div>
             <div class="col-md-9"><div class="row gx-2 text-center" id="stats-numbers"></div></div>
         </div>
 
+        <!-- OUTILS -->
         <div class="row g-2 mb-3 align-items-center">
-            <div class="col-md-5"><div class="input-group"><span class="input-group-text bg-body"><i class="bi bi-search"></i></span><input type="text" id="searchInput" class="form-control" placeholder="Rechercher..."></div></div>
-            <div class="col-md-5">
+            <div class="col-md-4"><div class="input-group"><span class="input-group-text bg-body"><i class="bi bi-search"></i></span><input type="text" id="searchInput" class="form-control" placeholder="Rechercher..."></div></div>
+            <div class="col-md-6">
                 <div class="btn-group w-100" role="group">
                     <button type="button" class="btn btn-outline-secondary active filter-btn" data-filter="all">Tout</button>
-                    <button type="button" class="btn btn-outline-warning filter-btn text-dark" data-filter="En attente">Attente</button>
+                    <button type="button" class="btn btn-outline-warning filter-btn text-dark" data-filter="En attente">Att.</button>
                     <button type="button" class="btn btn-outline-info filter-btn text-dark" data-filter="Entretien">Entr.</button>
-                    <button type="button" class="btn btn-outline-success filter-btn" data-filter="Validé">Validé</button>
+                    <!-- NOUVEAU BOUTON FILTRE -->
+                    <button type="button" class="btn btn-outline-primary filter-btn" data-filter="Suite Entretien">Suite</button>
+                    <button type="button" class="btn btn-outline-success filter-btn" data-filter="Validé">OK</button>
                 </div>
             </div>
             <div class="col-md-2 text-end"><button onclick="showForm()" id="btnNouveau" class="btn btn-primary w-100 shadow-sm admin-only fw-bold">+ Nouveau</button></div>
         </div>
 
+        <!-- FORMULAIRE -->
         <div id="form-card" class="card shadow mb-4" style="display: none;">
             <div class="card-header bg-primary text-white d-flex justify-content-between py-2 align-items-center">
                 <h6 id="form-title" class="mb-0 fw-bold">Ajouter un stage</h6>
@@ -106,7 +111,8 @@
                             <label class="small fw-bold">État</label>
                             <select id="etat" class="form-select form-select-sm">
                                 <option value="En attente">⏳ En attente</option>
-                                <option value="Entretien">🗣️ Entretien</option>
+                                <option value="Entretien">🗣️ Entretien (Prévu)</option>
+                                <option value="Suite Entretien">🤔 Suite Entr. (Attente rép.)</option> <!-- NOUVEAU -->
                                 <option value="Validé">✅ Validé</option>
                                 <option value="Refusé">❌ Refusé</option>
                             </select>
@@ -119,6 +125,7 @@
             </div>
         </div>
 
+        <!-- LISTE -->
         <div class="card shadow-sm border-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">

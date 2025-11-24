@@ -17,17 +17,18 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ==========================================
-// 🔴 ZONE DE CONFIGURATION
+// 🔴 ZONE DE CONFIGURATION INTEGRÉE
 // ==========================================
-  const firebaseConfig = {
-    apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
-    authDomain: "mon-suivi-stage.firebaseapp.com",
-    projectId: "mon-suivi-stage",
-    storageBucket: "mon-suivi-stage.firebasestorage.app",
-    messagingSenderId: "134252253002",
-    appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
-    measurementId: "G-GL4HPEBLRW",
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
+  authDomain: "mon-suivi-stage.firebaseapp.com",
+  projectId: "mon-suivi-stage",
+  storageBucket: "mon-suivi-stage.firebasestorage.app",
+  messagingSenderId: "134252253002",
+  appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
+  measurementId: "G-GL4HPEBLRW",
+};
+
 const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2";
 // ==========================================
 
@@ -97,7 +98,15 @@ document
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
-    let stats = { total: 0, attente: 0, entretien: 0, valide: 0, refuse: 0 };
+    // On compte le nouveau statut 'suite'
+    let stats = {
+      total: 0,
+      attente: 0,
+      entretien: 0,
+      suite: 0,
+      valide: 0,
+      refuse: 0,
+    };
 
     snapshot.forEach((doc) => {
       let data = doc.data();
@@ -106,17 +115,21 @@ function chargerDonnees() {
       stats.total++;
       if (data.etat === "En attente") stats.attente++;
       if (data.etat === "Entretien") stats.entretien++;
+      if (data.etat === "Suite Entretien") stats.suite++;
       if (data.etat === "Validé") stats.valide++;
       if (data.etat === "Refusé") stats.refuse++;
     });
 
     // Tri intelligent
     allStages.sort((a, b) => {
-      // Si entretien, très important, en haut
-      if (a.etat === "Entretien" && b.etat !== "Entretien") return -1;
-      if (a.etat !== "Entretien" && b.etat === "Entretien") return 1;
+      // Priorité absolue : Entretien et Suite Entretien
+      const isPrioA = a.etat === "Entretien" || a.etat === "Suite Entretien";
+      const isPrioB = b.etat === "Entretien" || b.etat === "Suite Entretien";
 
-      // Sinon tri par date de relance
+      if (isPrioA && !isPrioB) return -1;
+      if (!isPrioA && isPrioB) return 1;
+
+      // Ensuite par date de relance
       if (a.dateRelance && !b.dateRelance) return -1;
       if (!a.dateRelance && b.dateRelance) return 1;
       return 0;
@@ -131,23 +144,36 @@ function chargerDonnees() {
 function updateStats(stats) {
   const c = document.getElementById("stats-numbers");
   c.innerHTML = `
-        <div class="col-6 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.7em">TOTAL</small></div></div>
-        <div class="col-6 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.7em">ATTENTE</small></div></div>
-        <div class="col-6"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.7em">ENTR.</small></div></div>
-        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.7em">VALIDÉ</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
+        
+        <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE ENTR.</small></div></div>
+        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
     `;
+
   const ctx = document.getElementById("statsChart");
   if (myChart) myChart.destroy();
-  let dataChart = [stats.attente, stats.entretien, stats.valide, stats.refuse];
-  let colors = ["#ffc107", "#0dcaf0", "#198754", "#dc3545"];
+
+  // Ajout de la couleur violette pour "Suite"
+  let dataChart = [
+    stats.attente,
+    stats.entretien,
+    stats.suite,
+    stats.valide,
+    stats.refuse,
+  ];
+  let colors = ["#ffc107", "#0dcaf0", "#6610f2", "#198754", "#dc3545"];
+
   if (stats.total === 0) {
     dataChart = [1];
     colors = ["#444"];
   }
+
   myChart = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: ["Attente", "Entretien", "Validé", "Refusé"],
+      labels: ["Attente", "Entr. Prévu", "Suite Entr.", "Validé", "Refusé"],
       datasets: [
         {
           data: dataChart,
@@ -172,11 +198,10 @@ function renderTable(stagesToDisplay) {
 
   stagesToDisplay.forEach((stage) => {
     // --- LOGIQUE DATES ---
-    // On affiche "Relance" SI En attente. Sinon on affiche "Date Retour"
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
 
-    if (stage.etat === "En attente") {
-      // Mode RELANCE
+    // Si En attente OU Suite Entretien (on attend une réponse) -> On affiche Relance
+    if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
       if (stage.dateRelance) {
         if (stage.dateRelance < today)
           dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance}</div>`;
@@ -186,27 +211,28 @@ function renderTable(stagesToDisplay) {
           dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance}</span>`;
       }
     } else {
-      // Mode RETOUR (Validé, Refusé, Entretien)
+      // Sinon -> Date de Retour/RDV
       if (stage.dateStatut) {
         let colorClass = "text-muted";
         if (stage.etat === "Refusé") colorClass = "text-danger";
         if (stage.etat === "Validé") colorClass = "text-success";
         if (stage.etat === "Entretien") colorClass = "text-info";
-
         dateHtml = `<span class="${colorClass} small fw-bold"><i class="bi bi-calendar-check"></i> ${stage.dateStatut}</span>`;
       }
     }
 
+    // --- LOGIQUE COULEURS ETAT ---
     let badgeClass = "bg-warning text-dark bg-opacity-75";
     if (stage.etat === "Validé") badgeClass = "bg-success";
     if (stage.etat === "Refusé") badgeClass = "bg-danger";
     if (stage.etat === "Entretien") badgeClass = "bg-info text-dark";
+    if (stage.etat === "Suite Entretien") badgeClass = "bg-primary text-white"; // Violet/Bleu
 
     let lienHtml = stage.lien
       ? `<a href="${stage.lien}" target="_blank" class="text-secondary ms-1 text-decoration-none" title="Annonce"><i class="bi bi-link-45deg"></i></a>`
       : "";
 
-    // --- LOGIQUE MAIL (VISIBLE UNIQUEMENT PAR ADMIN) ---
+    // --- LIEN MAIL (ADMIN SEULEMENT) ---
     let mailHtml = "";
     if (isAdmin && stage.lienMail) {
       mailHtml = `<a href="${stage.lienMail}" target="_blank" class="text-primary ms-1" title="Ouvrir le mail"><i class="bi bi-envelope-at-fill"></i></a>`;
@@ -313,7 +339,7 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     lienMail: document.getElementById("lienMail").value,
     dateEnvoi: document.getElementById("dateEnvoi").value,
     dateRelance: document.getElementById("dateRelance").value,
-    dateStatut: document.getElementById("dateStatut").value, // NOUVEAU CHAMP
+    dateStatut: document.getElementById("dateStatut").value,
     etat: document.getElementById("etat").value,
     notes: document.getElementById("notes").value,
   };
@@ -342,7 +368,7 @@ function editStage(s) {
   document.getElementById("lienMail").value = s.lienMail || "";
   document.getElementById("dateEnvoi").value = s.dateEnvoi || "";
   document.getElementById("dateRelance").value = s.dateRelance || "";
-  document.getElementById("dateStatut").value = s.dateStatut || ""; // Remplir le nouveau champ
+  document.getElementById("dateStatut").value = s.dateStatut || "";
   document.getElementById("etat").value = s.etat;
   document.getElementById("notes").value = s.notes || "";
 
