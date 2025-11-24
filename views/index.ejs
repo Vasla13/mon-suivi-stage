@@ -10,50 +10,68 @@
 
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>📋 Mon Suivi de Stage</h1>
-        <a href="/nouveau" class="btn btn-primary btn-lg">+ Ajouter un stage</a>
+        <h1>🚀 Mon Suivi de Stage</h1>
+        <a href="/nouveau" class="btn btn-primary btn-lg">+ Nouveau Stage</a>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body">
             <% if (stages.length === 0) { %>
-                <p class="text-center text-muted">Aucun stage enregistré pour le moment.</p>
+                <p class="text-center text-muted py-4">
+                    Aucun stage pour le moment.<br>
+                    Clique sur le bouton bleu pour commencer tes recherches !
+                </p>
             <% } else { %>
-                <table class="table table-hover">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Entreprise</th>
-                            <th>Poste</th>
-                            <th>État</th>
-                            <th>Date début</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% stages.forEach(stage => { %>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-dark">
                             <tr>
-                                <td class="fw-bold"><%= stage.entreprise %></td>
-                                <td><%= stage.poste %></td>
-                                <td>
-                                    <span class="badge 
-                                        <%= stage.etat === 'Validé' ? 'bg-success' : 
-                                           (stage.etat === 'Refusé' ? 'bg-danger' : 'bg-warning') %>">
-                                        <%= stage.etat %>
-                                    </span>
-                                </td>
-                                <td><%= stage.dateDebut %></td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a href="/edit/<%= stage.id %>" class="btn btn-sm btn-outline-primary">Modifier</a>
-                                        <form action="/stages/<%= stage.id %>?_method=DELETE" method="POST" style="display:inline;">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce stage ?')">X</button>
-                                        </form>
-                                    </div>
-                                </td>
+                                <th>Entreprise</th>
+                                <th>Stage</th> <th>État</th>
+                                <th>À relancer le</th> <th>Lien</th> <th class="text-end">Actions</th>
                             </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <% stages.forEach(stage => { %>
+                                <tr>
+                                    <td class="fw-bold"><%= stage.entreprise %></td>
+                                    <td><%= stage.poste %></td>
+                                    <td>
+                                        <span class="badge rounded-pill 
+                                            <%= stage.etat === 'Validé' ? 'bg-success' : 
+                                               (stage.etat === 'Refusé' ? 'bg-danger' : 
+                                               (stage.etat === 'Entretien' ? 'bg-info text-dark' : 'bg-warning text-dark')) %>">
+                                            <%= stage.etat %>
+                                        </span>
+                                    </td>
+                                    
+                                    <td>
+                                        <% if (stage.dateRelance) { %>
+                                            <small class="text-muted"><%= stage.dateRelance %></small>
+                                        <% } else { %>
+                                            <span class="text-muted">-</span>
+                                        <% } %>
+                                    </td>
+
+                                    <td>
+                                        <% if (stage.lien) { %>
+                                            <a href="<%= stage.lien %>" target="_blank" class="btn btn-sm btn-light">🔗 Voir</a>
+                                        <% } %>
+                                    </td>
+
+                                    <td class="text-end">
+                                        <div class="btn-group" role="group">
+                                            <a href="/edit/<%= stage.id %>" class="btn btn-sm btn-outline-secondary">✏️</a>
+                                            <form action="/stages/<%= stage.id %>?_method=DELETE" method="POST" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce stage ?')">🗑️</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
             <% } %>
         </div>
     </div>

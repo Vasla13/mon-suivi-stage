@@ -7,48 +7,60 @@
 </head>
 <body class="bg-light">
 
-<div class="container mt-5" style="max-width: 600px;">
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h3><%= title %></h3>
+<div class="container mt-5" style="max-width: 700px;">
+    <div class="card shadow border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h4 class="mb-0"><%= title %></h4>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4">
             <form action="/stages<%= stage ? '/' + stage.id + '?_method=PUT' : '' %>" method="POST">
                 
-                <div class="mb-3">
-                    <label class="form-label">Nom de l'entreprise</label>
-                    <input type="text" name="entreprise" class="form-control" value="<%= stage ? stage.entreprise : '' %>" required>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nom de l'entreprise</label>
+                        <input type="text" name="entreprise" class="form-control" placeholder="Ex: Google, Boulangerie Pat..." value="<%= stage ? stage.entreprise : '' %>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Intitulé du Stage</label> <input type="text" name="poste" class="form-control" placeholder="Ex: Développeur, Vendeur..." value="<%= stage ? stage.poste : '' %>" required>
+                    </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Poste visé</label>
-                    <input type="text" name="poste" class="form-control" value="<%= stage ? stage.poste : '' %>" required>
+                    <label class="form-label text-muted small">Lien de l'annonce (URL)</label>
+                    <input type="url" name="lien" class="form-control form-control-sm" placeholder="https://..." value="<%= stage ? stage.lien : '' %>">
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">État de la candidature</label>
+                <hr class="my-4">
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">État actuel</label>
                         <select name="etat" class="form-select">
-                            <option value="En attente" <%= (stage && stage.etat === 'En attente') ? 'selected' : '' %>>En attente</option>
-                            <option value="Entretien" <%= (stage && stage.etat === 'Entretien') ? 'selected' : '' %>>Entretien</option>
-                            <option value="Validé" <%= (stage && stage.etat === 'Validé') ? 'selected' : '' %>>Validé</option>
-                            <option value="Refusé" <%= (stage && stage.etat === 'Refusé') ? 'selected' : '' %>>Refusé</option>
+                            <option value="En attente" <%= (stage && stage.etat === 'En attente') ? 'selected' : '' %>>⏳ En attente</option>
+                            <option value="Entretien" <%= (stage && stage.etat === 'Entretien') ? 'selected' : '' %>>🗣️ Entretien</option>
+                            <option value="Validé" <%= (stage && stage.etat === 'Validé') ? 'selected' : '' %>>✅ Validé !</option>
+                            <option value="Refusé" <%= (stage && stage.etat === 'Refusé') ? 'selected' : '' %>>❌ Refusé</option>
                         </select>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Date de début</label>
+                    <div class="col-md-4">
+                        <label class="form-label">Date début stage</label>
                         <input type="date" name="dateDebut" class="form-control" value="<%= stage ? stage.dateDebut : '' %>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-danger">Date de relance</label>
+                        <input type="date" name="dateRelance" class="form-control border-danger" value="<%= stage ? stage.dateRelance : '' %>">
+                        <div class="form-text small">Quand dois-tu renvoyer un mail ?</div>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Notes (Contact, adresse...)</label>
-                    <textarea name="notes" class="form-control" rows="3"><%= stage ? stage.notes : '' %></textarea>
+                <div class="mb-4">
+                    <label class="form-label">Mes notes</label>
+                    <textarea name="notes" class="form-control" rows="3" placeholder="Contact RH, adresse, questions à poser..."><%= stage ? stage.notes : '' %></textarea>
                 </div>
 
                 <div class="d-flex justify-content-between">
-                    <a href="/" class="btn btn-secondary">Annuler</a>
-                    <button type="submit" class="btn btn-success"><%= stage ? 'Mettre à jour' : 'Enregistrer' %></button>
+                    <a href="/" class="btn btn-outline-secondary">Annuler</a>
+                    <button type="submit" class="btn btn-success px-4"><%= stage ? 'Sauvegarder les modifications' : 'Ajouter ce stage' %></button>
                 </div>
             </form>
         </div>

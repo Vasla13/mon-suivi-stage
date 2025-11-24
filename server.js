@@ -12,18 +12,22 @@ const DATA_FILE = path.join(__dirname, "data", "stages.json");
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(methodOverride("_method")); // Permet d'utiliser PUT et DELETE dans les formulaires HTML
+app.use(methodOverride("_method"));
 
-// Fonction utilitaire pour lire les données
+// Fonction de lecture sécurisée (évite le crash si vide)
 function getStages() {
-  if (!fs.existsSync(DATA_FILE)) return [];
-  const data = fs.readFileSync(DATA_FILE);
-  return JSON.parse(data);
+  try {
+    if (!fs.existsSync(DATA_FILE)) return [];
+    const data = fs.readFileSync(DATA_FILE, "utf8");
+    if (!data) return [];
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
 }
 
-// Fonction utilitaire pour sauvegarder les données
+// Sauvegarde
 function saveStages(stages) {
-  // Assure que le dossier data existe
   if (!fs.existsSync(path.dirname(DATA_FILE))) {
     fs.mkdirSync(path.dirname(DATA_FILE));
   }
@@ -32,26 +36,26 @@ function saveStages(stages) {
 
 // --- ROUTES ---
 
-// 1. Accueil : Liste tous les stages
 app.get("/", (req, res) => {
   const stages = getStages();
   res.render("index", { stages: stages });
 });
 
-// 2. Formulaire de création : Afficher la page
 app.get("/nouveau", (req, res) => {
   res.render("form", { stage: null, title: "Ajouter un stage" });
 });
 
-// 3. Création : Traitement des données (POST)
+// Création (POST) - Ajout des nouveaux champs
 app.post("/stages", (req, res) => {
   const stages = getStages();
   const newStage = {
-    id: Date.now().toString(), // ID unique simple
+    id: Date.now().toString(),
     entreprise: req.body.entreprise,
-    poste: req.body.poste,
-    etat: req.body.etat, // En cours, Validé, Refusé
+    poste: req.body.poste, // On garde le nom technique "poste" mais on affichera "Stage"
+    etat: req.body.etat,
     dateDebut: req.body.dateDebut,
+    dateRelance: req.body.dateRelance, // NOUVEAU
+    lien: req.body.lien, // NOUVEAU
     notes: req.body.notes,
   };
   stages.push(newStage);
@@ -59,7 +63,6 @@ app.post("/stages", (req, res) => {
   res.redirect("/");
 });
 
-// 4. Formulaire de modification : Afficher la page
 app.get("/edit/:id", (req, res) => {
   const stages = getStages();
   const stage = stages.find((s) => s.id === req.params.id);
@@ -70,7 +73,7 @@ app.get("/edit/:id", (req, res) => {
   }
 });
 
-// 5. Mise à jour : Traitement des données (PUT)
+// Mise à jour (PUT) - Ajout des nouveaux champs
 app.put("/stages/:id", (req, res) => {
   let stages = getStages();
   const index = stages.findIndex((s) => s.id === req.params.id);
@@ -82,6 +85,8 @@ app.put("/stages/:id", (req, res) => {
       poste: req.body.poste,
       etat: req.body.etat,
       dateDebut: req.body.dateDebut,
+      dateRelance: req.body.dateRelance, // NOUVEAU
+      lien: req.body.lien, // NOUVEAU
       notes: req.body.notes,
     };
     saveStages(stages);
@@ -89,7 +94,6 @@ app.put("/stages/:id", (req, res) => {
   res.redirect("/");
 });
 
-// 6. Suppression (DELETE)
 app.delete("/stages/:id", (req, res) => {
   let stages = getStages();
   stages = stages.filter((s) => s.id !== req.params.id);
@@ -97,7 +101,6 @@ app.delete("/stages/:id", (req, res) => {
   res.redirect("/");
 });
 
-// Lancer le serveur
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);
 });
