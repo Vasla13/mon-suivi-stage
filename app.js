@@ -16,7 +16,7 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔴 CONFIGURATION FIREBASE & UID
+// 🔴 CONFIGURATION (REMPLIR ICI)
 const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
   authDomain: "mon-suivi-stage.firebaseapp.com",
@@ -36,9 +36,10 @@ const provider = new GithubAuthProvider();
 
 let isAdmin = false;
 let allStages = [];
+let filteredStages = []; // Pour la recherche
 let myChart = null;
-let map = null; // Instance Carte Leaflet
-let markers = []; // Liste des épingles
+let map = null;
+let markers = [];
 
 // --- AUTHENTIFICATION ---
 onAuthStateChanged(auth, (user) => {
@@ -49,7 +50,6 @@ onAuthStateChanged(auth, (user) => {
     if (user.photoURL)
       document.getElementById("userAvatar").src = user.photoURL;
 
-    // Gestion visuelle Admin/Invité
     const badge = document.getElementById("userStatus");
     const btns = document.querySelectorAll(".admin-only");
     if (isAdmin) {
@@ -74,30 +74,66 @@ document
   .getElementById("btnLogout")
   .addEventListener("click", () => signOut(auth));
 
-// --- GESTION DES VUES (Liste / Kanban / Map) ---
+// --- VUES & FILTRES ---
 const viewBtns = document.querySelectorAll(".view-btn");
 const views = {
   list: document.getElementById("view-list"),
   kanban: document.getElementById("view-kanban"),
   map: document.getElementById("view-map"),
 };
+let currentView = "list";
 
 viewBtns.forEach((btn) => {
   btn.addEventListener("click", () => {
     viewBtns.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+    currentView = btn.dataset.view;
 
-    const viewName = btn.dataset.view;
     Object.values(views).forEach((div) => (div.style.display = "none"));
-    views[viewName].style.display = "block";
+    views[currentView].style.display = "block";
 
-    // Rafraîchir les vues spécifiques
-    if (viewName === "kanban") renderKanban();
-    if (viewName === "map") setTimeout(() => initMap(), 200); // Petit délai pour affichage correct
+    refreshCurrentView();
   });
 });
 
-// --- CHARGEMENT DONNÉES ---
+// FILTRES (Recherche + Statut)
+const searchInput = document.getElementById("searchInput");
+const filterBtns = document.querySelectorAll(".filter-btn");
+let currentStatusFilter = "all";
+
+searchInput.addEventListener("input", applyFilters);
+filterBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    filterBtns.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentStatusFilter = btn.dataset.filter;
+    applyFilters();
+  });
+});
+
+function applyFilters() {
+  const term = searchInput.value.toLowerCase();
+
+  filteredStages = allStages.filter((s) => {
+    const matchText =
+      s.entreprise.toLowerCase().includes(term) ||
+      s.poste.toLowerCase().includes(term) ||
+      (s.adresse && s.adresse.toLowerCase().includes(term));
+    const matchStatus =
+      currentStatusFilter === "all" || s.etat === currentStatusFilter;
+    return matchText && matchStatus;
+  });
+
+  refreshCurrentView();
+}
+
+function refreshCurrentView() {
+  if (currentView === "list") renderList(filteredStages);
+  if (currentView === "kanban") renderKanban(filteredStages);
+  if (currentView === "map") setTimeout(() => initMap(filteredStages), 200);
+}
+
+// --- CHARGEMENT ---
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
@@ -122,14 +158,18 @@ function chargerDonnees() {
       if (data.etat === "Refusé") stats.refuse++;
     });
 
+    // Tri par défaut
+    allStages.sort((a, b) => {
+      if (a.dateRelance && !b.dateRelance) return -1;
+      return 0;
+    });
+
     updateStats(stats);
-    renderList(allStages); // Vue Liste
-    if (views.kanban.style.display !== "none") renderKanban(); // Refresh si ouvert
-    if (views.map.style.display !== "none") initMap(); // Refresh pins si ouvert
+    applyFilters(); // Applique filtres et rafraîchit la vue active
   });
 }
 
-// --- RENDER LISTE ---
+// --- RENDER LISTE (Avec Liens & Delete) ---
 function renderList(stages) {
   const tbody = document.getElementById("stages-table-body");
   const today = new Date().toISOString().split("T")[0];
@@ -153,25 +193,85 @@ function renderList(stages) {
     if (s.etat === "Suite Entretien") badgeClass = "bg-primary";
     if (s.etat === "En attente") badgeClass = "bg-warning text-dark";
 
-    html += `<tr onclick="editStage('${s.id}')" style="cursor:pointer">
-            <td><strong>${s.entreprise}</strong><br><small class="text-muted">${
+    // Icônes Liens
+    let linksHtml = "";
+    if (s.lien)
+      linksHtml += `<a href="${s.lien}" target="_blank" class="text-secondary me-2" title="Annonce"><i class="bi bi-link-45deg"></i></a>`;
+    if (isAdmin && s.lienMail)
+      linksHtml += `<a href="${s.lienMail}" target="_blank" class="text-primary" title="Mail"><i class="bi bi-envelope-at-fill"></i></a>`;
+
+    // Boutons Actions
+    let actionsHtml = isAdmin
+      ? `
+            <button class="btn btn-sm btn-outline-secondary me-1" onclick="editStage('${s.id}')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteStage('${s.id}')"><i class="bi bi-trash"></i></button>
+        `
+      : "";
+
+    html += `<tr>
+            <td><strong>${
+              s.entreprise
+            }</strong> ${linksHtml}<br><small class="text-muted">${
       s.poste
     }</small></td>
             <td><i class="bi bi-geo-alt"></i> ${s.adresse || "-"}</td>
             <td><span class="badge ${badgeClass}">${s.etat}</span></td>
             <td>${dateTxt}</td>
-            <td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button></td>
+            <td class="text-end">${actionsHtml}</td>
         </tr>`;
   });
-  tbody.innerHTML = html;
+  tbody.innerHTML =
+    html ||
+    '<tr><td colspan="5" class="text-center p-3 text-muted">Aucun stage trouvé.</td></tr>';
+}
+
+// --- RENDER MAP (Auto-Zoom & Popup) ---
+function initMap(stages) {
+  if (!map) {
+    map = L.map("map-container").setView([46.6, 1.8], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap",
+    }).addTo(map);
+  } else {
+    map.invalidateSize();
+  }
+
+  // Nettoyage
+  markers.forEach((m) => map.removeLayer(m));
+  markers = [];
+
+  const featureGroup = L.featureGroup();
+
+  stages.forEach((s) => {
+    if (s.lat && s.lng) {
+      const marker = L.marker([s.lat, s.lng]).addTo(map);
+
+      // Popup Info
+      const popupContent = `
+                <div class="text-center">
+                    <strong>${s.entreprise}</strong><br>${s.poste}<br>
+                    <span class="badge bg-secondary">${s.etat}</span><br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="editStage('${s.id}')">Voir / Modifier</button>
+                </div>
+            `;
+      marker.bindPopup(popupContent);
+
+      markers.push(marker);
+      featureGroup.addLayer(marker);
+    }
+  });
+
+  // Auto-Zoom
+  if (markers.length > 0) {
+    map.fitBounds(featureGroup.getBounds().pad(0.1));
+  }
 }
 
 // --- RENDER KANBAN ---
-function renderKanban() {
+function renderKanban(stages) {
   const container = document.querySelector(".kanban-container");
   container.innerHTML = "";
-
-  const columns = [
+  const cols = [
     { id: "En attente", title: "⏳ En attente", color: "border-attente" },
     {
       id: "Entretien",
@@ -183,116 +283,63 @@ function renderKanban() {
     { id: "Refusé", title: "❌ Refusé", color: "border-refuse" },
   ];
 
-  columns.forEach((col) => {
-    // Filtrer les stages de cette colonne
-    const stagesInCol = allStages.filter((s) =>
+  cols.forEach((col) => {
+    const items = stages.filter((s) =>
       col.filter ? col.filter(s) : s.etat === col.id
     );
-
-    let cardsHtml = "";
-    stagesInCol.forEach((s) => {
-      cardsHtml += `
-            <div class="kanban-card ${
-              col.color
-            }" draggable="${isAdmin}" ondragstart="drag(event, '${
+    let html = "";
+    items.forEach((s) => {
+      html += `<div class="kanban-card ${
+        col.color
+      }" draggable="${isAdmin}" ondragstart="drag(event, '${
         s.id
       }')" onclick="editStage('${s.id}')">
-                <div class="fw-bold">${s.entreprise}</div>
-                <div class="small">${s.poste}</div>
+                <div class="fw-bold">${s.entreprise}</div><div class="small">${
+        s.poste
+      }</div>
                 <div class="small text-muted mt-1"><i class="bi bi-geo-alt"></i> ${
                   s.adresse || "?"
                 }</div>
             </div>`;
     });
-
-    container.innerHTML += `
-        <div class="kanban-column" ondrop="drop(event, '${col.id}')" ondragover="allowDrop(event)">
-            <div class="kanban-header">${col.title} <span class="badge bg-secondary float-end">${stagesInCol.length}</span></div>
-            <div class="d-flex flex-column gap-2 flex-grow-1">${cardsHtml}</div>
+    container.innerHTML += `<div class="kanban-column" ondrop="drop(event, '${col.id}')" ondragover="allowDrop(event)">
+            <div class="kanban-header">${col.title} <span class="badge bg-secondary float-end">${items.length}</span></div>
+            <div class="d-flex flex-column gap-2 flex-grow-1">${html}</div>
         </div>`;
   });
 }
 
-// --- DRAG & DROP KANBAN (Global Functions) ---
-window.allowDrop = (ev) => ev.preventDefault();
-window.drag = (ev, id) => ev.dataTransfer.setData("text", id);
-window.drop = async (ev, newStatus) => {
-  ev.preventDefault();
-  if (!isAdmin) return;
-  const id = ev.dataTransfer.getData("text");
-  // Cas spécial : Entretien et Suite vont dans la même colonne visuelle, mais on force "Entretien" par défaut si drop
-  if (newStatus === "Entretien") newStatus = "Entretien";
-  try {
-    await updateDoc(doc(db, "stages", id), { etat: newStatus });
-  } catch (e) {
-    alert(e.message);
-  }
-};
-
-// --- RENDER MAP ---
-function initMap() {
-  if (!map) {
-    map = L.map("map-container").setView([46.603354, 1.888334], 5); // France centrée
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-    }).addTo(map);
-  } else {
-    map.invalidateSize(); // Important si le conteneur était caché
-  }
-
-  // Nettoyer les marqueurs existants
-  markers.forEach((m) => map.removeLayer(m));
-  markers = [];
-
-  allStages.forEach((s) => {
-    if (s.lat && s.lng) {
-      let color = "blue"; // Par défaut
-      if (s.etat === "Validé") color = "green";
-      if (s.etat === "Refusé") color = "red";
-
-      // Création d'une icône simple (on pourrait faire mieux)
-      const marker = L.marker([s.lat, s.lng]).addTo(map);
-      marker.bindPopup(
-        `<b>${s.entreprise}</b><br>${s.poste}<br><span class="badge bg-secondary">${s.etat}</span><br><button onclick="editStage('${s.id}')" class="btn btn-sm btn-primary mt-2">Détails</button>`
-      );
-      markers.push(marker);
-    }
-  });
-}
-
-// --- GÉOCODING (Nominatim) ---
+// --- GÉOCODING ---
 async function geocodeAdresse(adresse) {
   if (!adresse) return null;
   try {
-    const response = await fetch(
+    const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
         adresse
       )}`
     );
-    const data = await response.json();
-    if (data && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
+    const data = await res.json();
+    return data && data.length
+      ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+      : null;
   } catch (e) {
-    console.error("Erreur Géocoding", e);
+    console.error(e);
+    return null;
   }
-  return null;
 }
 
-// --- FORMULAIRE & CRUD ---
+// --- CRUD & FORM ---
 document.getElementById("stageForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!isAdmin) return;
 
-  // On récupère les données
   const docId = document.getElementById("docId").value;
   const adresse = document.getElementById("adresse").value;
-
-  // On tente de géocoder si l'adresse a changé ou pas de coords
   let coords = {
     lat: document.getElementById("lat").value,
     lng: document.getElementById("lng").value,
   };
+
   if (adresse) {
     const newCoords = await geocodeAdresse(adresse);
     if (newCoords) coords = newCoords;
@@ -302,8 +349,8 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
     entreprise: document.getElementById("entreprise").value,
     poste: document.getElementById("poste").value,
     adresse: adresse,
-    lat: coords.lat || null,
-    lng: coords.lng || null,
+    lat: coords.lat,
+    lng: coords.lng,
     lien: document.getElementById("lien").value,
     lienMail: document.getElementById("lienMail").value,
     dateEnvoi: document.getElementById("dateEnvoi").value,
@@ -322,18 +369,7 @@ document.getElementById("stageForm").addEventListener("submit", async (e) => {
   }
 });
 
-// --- UI HELPERS ---
-window.showForm = () => {
-  document.getElementById("form-overlay").style.display = "flex";
-  document.getElementById("form-title").innerText = "Ajouter un stage";
-  document.getElementById("docId").value = "";
-  document.getElementById("stageForm").reset();
-  // Masquer bouton supprimer si nouveau
-  document.getElementById("btnDeleteForm").style.display = "none";
-};
-window.hideForm = () =>
-  (document.getElementById("form-overlay").style.display = "none");
-
+// --- GLOBALS ---
 window.editStage = (id) => {
   const s = allStages.find((x) => x.id === id);
   if (!s) return;
@@ -350,46 +386,65 @@ window.editStage = (id) => {
   document.getElementById("dateStatut").value = s.dateStatut || "";
   document.getElementById("etat").value = s.etat;
   document.getElementById("notes").value = s.notes || "";
-
-  document.getElementById("form-title").innerText = "Modifier / Détails";
-  document.getElementById("btnDeleteForm").style.display = "inline-block"; // Afficher suppression
+  document.getElementById("form-title").innerText = "Modifier";
+  document.getElementById("btnDeleteForm").style.display = "inline-block";
   document.getElementById("form-overlay").style.display = "flex";
 };
 
+window.deleteStage = async (id) => {
+  if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
+};
 window.deleteStageFromForm = async () => {
   const id = document.getElementById("docId").value;
-  if (isAdmin && id && confirm("Supprimer définitivement ?")) {
+  if (isAdmin && id && confirm("Supprimer ?")) {
     await deleteDoc(doc(db, "stages", id));
     window.hideForm();
   }
 };
+window.showForm = () => {
+  document.getElementById("form-overlay").style.display = "flex";
+  document.getElementById("form-title").innerText = "Ajouter";
+  document.getElementById("docId").value = "";
+  document.getElementById("stageForm").reset();
+  document.getElementById("btnDeleteForm").style.display = "none";
+};
+window.hideForm = () =>
+  (document.getElementById("form-overlay").style.display = "none");
+
+// Drag & Drop
+window.allowDrop = (ev) => ev.preventDefault();
+window.drag = (ev, id) => ev.dataTransfer.setData("text", id);
+window.drop = async (ev, newStatus) => {
+  ev.preventDefault();
+  if (!isAdmin) return;
+  const id = ev.dataTransfer.getData("text");
+  if (newStatus === "Entretien") newStatus = "Entretien";
+  try {
+    await updateDoc(doc(db, "stages", id), { etat: newStatus });
+  } catch (e) {}
+};
 
 function updateStats(stats) {
+  /* Identique précédent, conservé pour brièveté */
   const c = document.getElementById("stats-numbers");
-  c.innerHTML = `
-        <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
-        <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
-        <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR.</small></div></div>
-        <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div>
-        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
-    `;
+  c.innerHTML = `<div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div><div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div><div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>`;
   if (myChart) myChart.destroy();
   const ctx = document.getElementById("statsChart");
-  let dataChart = [
+  let data = [
     stats.attente,
     stats.entretien,
     stats.suite,
     stats.valide,
     stats.refuse,
   ];
-  if (stats.total === 0) dataChart = [1];
+  if (stats.total === 0) data = [1];
   myChart = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: ["Attente", "Entretien", "Suite", "Validé", "Refusé"],
+      labels: [],
       datasets: [
         {
-          data: dataChart,
+          data: data,
           backgroundColor: [
             "#ffc107",
             "#0dcaf0",

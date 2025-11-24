@@ -5,15 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi Stage Master</title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <!-- Leaflet CSS (Carte) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <!-- Ton CSS -->
     <link rel="stylesheet" href="style.css">
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -31,16 +26,15 @@
 
 <!-- 📱 APP CONTENT -->
 <div id="app-content">
-    <div class="container-fluid px-4 mt-4 mb-5"> <!-- Container Fluid pour plus d'espace -->
+    <div class="container-fluid px-4 mt-4 mb-5"> 
         
-        <!-- HEADER & NAV -->
+        <!-- HEADER -->
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
             <div class="d-flex align-items-center">
                 <img id="userAvatar" src="" class="rounded-circle me-2 border border-2 border-secondary shadow-sm" style="width: 40px; height: 40px;">
                 <div><h1 class="h5 mb-0 fw-bold">Mes Candidatures</h1><span id="userStatus" class="badge bg-secondary" style="font-size: 0.6em;">Chargement...</span></div>
             </div>
 
-            <!-- 🎛️ SÉLECTEUR DE VUE -->
             <div class="btn-group shadow-sm" role="group">
                 <button type="button" class="btn btn-outline-primary active view-btn" data-view="list"><i class="bi bi-list-ul"></i> Liste</button>
                 <button type="button" class="btn btn-outline-primary view-btn" data-view="kanban"><i class="bi bi-kanban"></i> Kanban</button>
@@ -54,25 +48,47 @@
             </div>
         </div>
 
-        <!-- STATS (Visibles partout) -->
+        <!-- STATS -->
         <div class="row mb-4 align-items-center justify-content-center">
             <div class="col-md-2 mb-3 mb-md-0"><div class="card shadow-sm p-2"><div class="chart-container"><canvas id="statsChart"></canvas></div></div></div>
             <div class="col-md-8"><div class="row gx-2 text-center" id="stats-numbers"></div></div>
             <div class="col-md-2 text-end"><button onclick="showForm()" id="btnNouveau" class="btn btn-primary w-100 py-3 shadow fw-bold admin-only">+ Nouveau</button></div>
         </div>
 
+        <!-- FILTRES GLOBAUX (Recherche + Statut) -->
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Filtrer par entreprise, ville...">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary active filter-btn" data-filter="all">Tout</button>
+                    <button type="button" class="btn btn-outline-warning filter-btn text-dark" data-filter="En attente">Att.</button>
+                    <button type="button" class="btn btn-outline-info filter-btn text-dark" data-filter="Entretien">Entr.</button>
+                    <button type="button" class="btn btn-outline-primary filter-btn" data-filter="Suite Entretien">Suite</button>
+                    <button type="button" class="btn btn-outline-success filter-btn" data-filter="Validé">OK</button>
+                </div>
+            </div>
+        </div>
+
         <!-- ================= VUES ================= -->
         
-        <!-- 1. VUE LISTE (Classique) -->
+        <!-- 1. VUE LISTE -->
         <div id="view-list" class="view-section">
-            <div class="row g-2 mb-3">
-                <div class="col-md-12"><div class="input-group"><span class="input-group-text bg-body"><i class="bi bi-search"></i></span><input type="text" id="searchInput" class="form-control" placeholder="Filtrer par entreprise, ville..."></div></div>
-            </div>
             <div class="card shadow-sm border-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-secondary text-uppercase small">
-                            <tr><th class="ps-3">Candidature</th><th>Lieu</th><th>État</th><th>Calendrier</th><th class="text-end pe-3">Actions</th></tr>
+                            <tr>
+                                <th class="ps-3">Candidature</th>
+                                <th>Lieu</th>
+                                <th>État</th>
+                                <th>Calendrier</th>
+                                <th class="text-end pe-3">Actions</th>
+                            </tr>
                         </thead>
                         <tbody id="stages-table-body"></tbody>
                     </table>
@@ -80,14 +96,12 @@
             </div>
         </div>
 
-        <!-- 2. VUE KANBAN (Trello) -->
+        <!-- 2. VUE KANBAN -->
         <div id="view-kanban" class="view-section" style="display: none;">
-            <div class="kanban-container">
-                <!-- Colonnes générées par JS -->
-            </div>
+            <div class="kanban-container"></div>
         </div>
 
-        <!-- 3. VUE CARTE (Map) -->
+        <!-- 3. VUE CARTE -->
         <div id="view-map" class="view-section" style="display: none;">
             <div class="card shadow-sm border-0">
                 <div id="map-container" style="height: 600px; width: 100%; border-radius: var(--bs-border-radius);"></div>
@@ -97,7 +111,7 @@
     </div>
 </div>
 
-<!-- MODAL FORMULAIRE (Style Trello Card) -->
+<!-- MODAL FORMULAIRE -->
 <div id="form-overlay" style="display:none;">
     <div class="form-modal card shadow-lg">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -107,26 +121,26 @@
         <div class="card-body">
             <form id="stageForm">
                 <input type="hidden" id="docId">
-                <input type="hidden" id="lat"> <!-- Coordonnées GPS cachées -->
+                <input type="hidden" id="lat">
                 <input type="hidden" id="lng">
 
                 <div class="row mb-3">
                     <div class="col-7">
                         <label class="small fw-bold text-muted">ENTREPRISE</label>
-                        <input type="text" id="entreprise" class="form-control fw-bold" placeholder="Nom de l'entreprise" required>
+                        <input type="text" id="entreprise" class="form-control fw-bold" required>
                     </div>
                     <div class="col-5">
                         <label class="small fw-bold text-muted">VILLE / ADRESSE</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                            <input type="text" id="adresse" class="form-control" placeholder="Ex: Paris" required>
+                            <input type="text" id="adresse" class="form-control" placeholder="Ex: Paris">
                         </div>
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="small fw-bold text-muted">POSTE</label>
-                    <input type="text" id="poste" class="form-control" placeholder="Intitulé du stage" required>
+                    <input type="text" id="poste" class="form-control" required>
                 </div>
 
                 <div class="row mb-3">
@@ -142,18 +156,9 @@
 
                 <div class="p-3 mb-3 bg-body-tertiary rounded border">
                     <div class="row g-2">
-                        <div class="col-4">
-                            <label class="small text-muted">Envoyé le</label>
-                            <input type="date" id="dateEnvoi" class="form-control form-control-sm">
-                        </div>
-                        <div class="col-4">
-                            <label class="small text-primary fw-bold">Relance (+7j)</label>
-                            <input type="date" id="dateRelance" class="form-control form-control-sm border-primary">
-                        </div>
-                        <div class="col-4">
-                            <label class="small text-success fw-bold">Rendez-vous</label>
-                            <input type="date" id="dateStatut" class="form-control form-control-sm border-success">
-                        </div>
+                        <div class="col-4"><label class="small text-muted">Envoyé le</label><input type="date" id="dateEnvoi" class="form-control form-control-sm"></div>
+                        <div class="col-4"><label class="small text-primary fw-bold">Relance (+7j)</label><input type="date" id="dateRelance" class="form-control form-control-sm border-primary"></div>
+                        <div class="col-4"><label class="small text-success fw-bold">Rendez-vous</label><input type="date" id="dateStatut" class="form-control form-control-sm border-success"></div>
                     </div>
                 </div>
 
@@ -170,7 +175,7 @@
                     </div>
                     <div class="col-6">
                         <label class="small fw-bold text-muted">NOTES</label>
-                        <textarea id="notes" class="form-control" rows="1" placeholder="Infos utiles..."></textarea>
+                        <textarea id="notes" class="form-control" rows="1"></textarea>
                     </div>
                 </div>
                 
@@ -183,9 +188,8 @@
     </div>
 </div>
 
-<div id="loading" class="text-center p-5 text-muted" style="display:none;">Chargement des données...</div>
+<div id="loading" class="text-center p-5 text-muted" style="display:none;">Chargement...</div>
 
-<!-- Scripts Leaflet et App -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module" src="app.js"></script>
 </body>
