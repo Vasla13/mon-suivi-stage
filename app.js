@@ -36,9 +36,24 @@ const provider = new GithubAuthProvider();
 
 let isAdmin = false;
 let allStages = [];
-let filteredStages = [];
+let filteredStages = []; // Pour la recherche
 let myChart = null;
-let world = null; // Le Globe
+
+// --- DARK MODE ---
+const btnTheme = document.getElementById("btnTheme");
+const htmlEl = document.documentElement;
+if (localStorage.getItem("theme") === "dark") {
+  htmlEl.setAttribute("data-bs-theme", "dark");
+  btnTheme.innerHTML = '<i class="bi bi-sun-fill"></i>';
+}
+btnTheme.addEventListener("click", () => {
+  const isDark = htmlEl.getAttribute("data-bs-theme") === "dark";
+  htmlEl.setAttribute("data-bs-theme", isDark ? "light" : "dark");
+  btnTheme.innerHTML = isDark
+    ? '<i class="bi bi-moon-stars-fill"></i>'
+    : '<i class="bi bi-sun-fill"></i>';
+  localStorage.setItem("theme", isDark ? "light" : "dark");
+});
 
 // --- AUTH ---
 onAuthStateChanged(auth, (user) => {
@@ -50,15 +65,15 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById("userAvatar").src = user.photoURL;
 
     const badge = document.getElementById("userStatus");
-    const btns = document.querySelectorAll(".admin-only");
+    const btn = document.getElementById("btnNouveau");
     if (isAdmin) {
       badge.className = "badge bg-primary";
       badge.innerText = "Admin";
-      btns.forEach((b) => b.classList.remove("admin-only"));
+      btn.classList.remove("admin-only");
     } else {
       badge.className = "badge bg-secondary";
       badge.innerText = "Invité";
-      btns.forEach((b) => b.classList.add("admin-only"));
+      btn.classList.add("admin-only");
     }
     chargerDonnees();
   } else {
@@ -73,62 +88,16 @@ document
   .getElementById("btnLogout")
   .addEventListener("click", () => signOut(auth));
 
-// --- VUES ---
-const viewBtns = document.querySelectorAll(".view-btn");
-const views = {
-  list: document.getElementById("view-list"),
-  kanban: document.getElementById("view-kanban"),
-  map: document.getElementById("view-map"),
-};
-let currentView = "list";
-
-viewBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    viewBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentView = btn.dataset.view;
-    Object.values(views).forEach((div) => (div.style.display = "none"));
-    views[currentView].style.display = "block";
-    refreshCurrentView();
-  });
-});
-
-// --- FILTRES ---
-const searchInput = document.getElementById("searchInput");
-const filterBtns = document.querySelectorAll(".filter-btn");
-let currentStatusFilter = "all";
-
-searchInput.addEventListener("input", applyFilters);
-filterBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    filterBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentStatusFilter = btn.dataset.filter;
-    applyFilters();
-  });
-});
-
-function applyFilters() {
-  const term = searchInput.value.toLowerCase();
-  filteredStages = allStages.filter((s) => {
-    const matchText =
-      s.entreprise.toLowerCase().includes(term) ||
-      s.poste.toLowerCase().includes(term) ||
-      (s.adresse && s.adresse.toLowerCase().includes(term));
-    const matchStatus =
-      currentStatusFilter === "all" || s.etat === currentStatusFilter;
-    return matchText && matchStatus;
-  });
-  refreshCurrentView();
+// --- UTILITAIRE JOURS ---
+function getDaysDiff(dateString) {
+  if (!dateString) return 0;
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
-function refreshCurrentView() {
-  if (currentView === "list") renderList(filteredStages);
-  if (currentView === "kanban") renderKanban(filteredStages);
-  if (currentView === "map") setTimeout(() => initGlobe(filteredStages), 200);
-}
-
-// --- DATA ---
+// --- CHARGEMENT & AUTO-REFUS ---
 function chargerDonnees() {
   onSnapshot(stagesCollection, (snapshot) => {
     allStages = [];
@@ -140,9 +109,27 @@ function chargerDonnees() {
       valide: 0,
       refuse: 0,
     };
-    snapshot.forEach((doc) => {
-      let data = doc.data();
-      data.id = doc.id;
+
+    snapshot.forEach((docSnapshot) => {
+      let data = docSnapshot.data();
+      data.id = docSnapshot.id;
+
+      // Auto-refus 21 jours
+      if (
+        isAdmin &&
+        (data.etat === "En attente" || data.etat === "Suite Entretien") &&
+        data.dateEnvoi
+      ) {
+        const daysElapsed = getDaysDiff(data.dateEnvoi);
+        if (daysElapsed > 21) {
+          updateDoc(doc(db, "stages", data.id), {
+            etat: "Refusé",
+            notes: (data.notes || "") + " \n[Auto] > 21j sans rép.",
+          });
+          data.etat = "Refusé";
+        }
+      }
+
       allStages.push(data);
       stats.total++;
       if (data.etat === "En attente") stats.attente++;
@@ -151,255 +138,32 @@ function chargerDonnees() {
       if (data.etat === "Validé") stats.valide++;
       if (data.etat === "Refusé") stats.refuse++;
     });
+
+    // Tri intelligent
     allStages.sort((a, b) => {
+      const isPrioA = a.etat === "Entretien" || a.etat === "Suite Entretien";
+      const isPrioB = b.etat === "Entretien" || b.etat === "Suite Entretien";
+      if (isPrioA && !isPrioB) return -1;
+      if (!isPrioA && isPrioB) return 1;
       if (a.dateRelance && !b.dateRelance) return -1;
+      if (!a.dateRelance && b.dateRelance) return 1;
       return 0;
     });
+
     updateStats(stats);
-    applyFilters();
+    applyFilters(); // Applique la recherche actuelle
   });
 }
 
-// --- GLOBE 3D ---
-function initGlobe(stages) {
-  const container = document.getElementById("globe-container");
-  // On évite de recréer le globe s'il existe
-  if (!world) {
-    world = Globe()(container)
-      .globeImageUrl("//unpkg.com/three-globe/example/img/earth-night.jpg") // Texture Terre nuit
-      .backgroundColor("rgba(0,0,0,0)") // Fond transparent (géré par CSS)
-      .pointAltitude(0.1) // Hauteur des points
-      .pointRadius(0.5) // Taille des points
-      .pointColor("color") // Couleur dynamique
-      .onPointClick((point) => editStage(point.id)) // Clic sur un point
-      .pointLabel(
-        (point) =>
-          `<b>${point.entreprise}</b><br>${point.poste} (${point.etat})`
-      ); // Info-bulle
-  }
-
-  // Préparer les données pour le globe
-  const points = stages
-    .filter((s) => s.lat && s.lng)
-    .map((s) => {
-      let color = "#ffc107"; // Attente (Jaune)
-      if (s.etat === "Validé") color = "#198754"; // Vert
-      if (s.etat === "Refusé") color = "#dc3545"; // Rouge
-      if (s.etat === "Entretien") color = "#0dcaf0"; // Bleu
-      if (s.etat === "Suite Entretien") color = "#6610f2"; // Violet
-
-      return {
-        id: s.id,
-        lat: s.lat,
-        lng: s.lng,
-        entreprise: s.entreprise,
-        poste: s.poste,
-        etat: s.etat,
-        color: color,
-        size: 1.5,
-      };
-    });
-
-  world.pointsData(points);
-
-  // Auto-rotate pour le style
-  world.controls().autoRotate = true;
-  world.controls().autoRotateSpeed = 0.5;
-
-  // Ajuster la taille si la fenêtre change
-  world.width(container.clientWidth);
-  world.height(container.clientHeight);
-}
-
-// --- RENDER LISTE ---
-function renderList(stages) {
-  const tbody = document.getElementById("stages-table-body");
-  const today = new Date().toISOString().split("T")[0];
-  let html = "";
-
-  stages.forEach((s) => {
-    let dateTxt = "-";
-    if (s.etat === "En attente" || s.etat === "Suite Entretien") {
-      if (s.dateRelance)
-        dateTxt =
-          s.dateRelance <= today
-            ? `<span class="text-danger fw-bold">Relance!</span>`
-            : `<span class="text-muted">${s.dateRelance}</span>`;
-    } else if (s.dateStatut)
-      dateTxt = `<span class="text-success fw-bold">${s.dateStatut}</span>`;
-
-    let badgeClass = "bg-secondary";
-    if (s.etat === "Validé") badgeClass = "bg-success";
-    if (s.etat === "Refusé") badgeClass = "bg-danger";
-    if (s.etat === "Entretien") badgeClass = "bg-info text-dark";
-    if (s.etat === "Suite Entretien") badgeClass = "bg-primary";
-    if (s.etat === "En attente") badgeClass = "bg-warning text-dark";
-
-    let linksHtml = "";
-    if (s.lien)
-      linksHtml += `<a href="${s.lien}" target="_blank" class="text-secondary me-2" title="Annonce"><i class="bi bi-link-45deg"></i></a>`;
-    if (isAdmin && s.lienMail)
-      linksHtml += `<a href="${s.lienMail}" target="_blank" class="text-primary" title="Mail"><i class="bi bi-envelope-at-fill"></i></a>`;
-
-    let actionsHtml = isAdmin
-      ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="editStage('${s.id}')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="deleteStage('${s.id}')"><i class="bi bi-trash"></i></button>`
-      : "";
-
-    html += `<tr><td><strong>${s.entreprise}</strong> ${linksHtml}<br><small class="text-muted">${s.poste}</small></td><td><span class="badge ${badgeClass}">${s.etat}</span></td><td>${dateTxt}</td><td class="text-end">${actionsHtml}</td></tr>`;
-  });
-  tbody.innerHTML =
-    html ||
-    '<tr><td colspan="5" class="text-center p-3 text-muted">Aucun stage trouvé.</td></tr>';
-}
-
-// --- RENDER KANBAN ---
-function renderKanban(stages) {
-  const container = document.querySelector(".kanban-container");
-  container.innerHTML = "";
-  const cols = [
-    { id: "En attente", title: "⏳ En attente", color: "border-attente" },
-    {
-      id: "Entretien",
-      title: "🗣️ Entretien / Suite",
-      color: "border-entretien",
-      filter: (s) => s.etat === "Entretien" || s.etat === "Suite Entretien",
-    },
-    { id: "Validé", title: "✅ Validé", color: "border-valide" },
-    { id: "Refusé", title: "❌ Refusé", color: "border-refuse" },
-  ];
-  cols.forEach((col) => {
-    const items = stages.filter((s) =>
-      col.filter ? col.filter(s) : s.etat === col.id
-    );
-    let html = "";
-    items.forEach(
-      (s) =>
-        (html += `<div class="kanban-card ${
-          col.color
-        }" draggable="${isAdmin}" ondragstart="drag(event, '${
-          s.id
-        }')" onclick="editStage('${s.id}')"><div class="fw-bold">${
-          s.entreprise
-        }</div><div class="small">${
-          s.poste
-        }</div><div class="small text-muted mt-1"><i class="bi bi-geo-alt"></i> ${
-          s.adresse || "?"
-        }</div></div>`)
-    );
-    container.innerHTML += `<div class="kanban-column" ondrop="drop(event, '${col.id}')" ondragover="allowDrop(event)"><div class="kanban-header">${col.title} <span class="badge bg-secondary float-end">${items.length}</span></div><div class="d-flex flex-column gap-2 flex-grow-1">${html}</div></div>`;
-  });
-}
-
-// --- GEOCODING ---
-async function geocodeAdresse(adresse) {
-  if (!adresse) return null;
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        adresse
-      )}`
-    );
-    const data = await res.json();
-    return data && data.length
-      ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-      : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// --- FORM & CRUD ---
-document.getElementById("stageForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!isAdmin) return;
-  const docId = document.getElementById("docId").value;
-  const adresse = document.getElementById("adresse").value;
-  let coords = {
-    lat: document.getElementById("lat").value,
-    lng: document.getElementById("lng").value,
-  };
-  if (adresse) {
-    const newCoords = await geocodeAdresse(adresse);
-    if (newCoords) coords = newCoords;
-  }
-
-  const stageData = {
-    entreprise: document.getElementById("entreprise").value,
-    poste: document.getElementById("poste").value,
-    adresse: adresse,
-    lat: coords.lat,
-    lng: coords.lng,
-    lien: document.getElementById("lien").value,
-    lienMail: document.getElementById("lienMail").value,
-    dateEnvoi: document.getElementById("dateEnvoi").value,
-    dateRelance: document.getElementById("dateRelance").value,
-    dateStatut: document.getElementById("dateStatut").value,
-    etat: document.getElementById("etat").value,
-    notes: document.getElementById("notes").value,
-  };
-  try {
-    if (docId) await updateDoc(doc(db, "stages", docId), stageData);
-    else await addDoc(stagesCollection, stageData);
-    window.hideForm();
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-// --- HELPERS ---
-window.editStage = (id) => {
-  const s = allStages.find((x) => x.id === id);
-  if (!s) return;
-  document.getElementById("docId").value = s.id;
-  document.getElementById("entreprise").value = s.entreprise;
-  document.getElementById("poste").value = s.poste;
-  document.getElementById("adresse").value = s.adresse || "";
-  document.getElementById("lat").value = s.lat || "";
-  document.getElementById("lng").value = s.lng || "";
-  document.getElementById("lien").value = s.lien || "";
-  document.getElementById("lienMail").value = s.lienMail || "";
-  document.getElementById("dateEnvoi").value = s.dateEnvoi || "";
-  document.getElementById("dateRelance").value = s.dateRelance || "";
-  document.getElementById("dateStatut").value = s.dateStatut || "";
-  document.getElementById("etat").value = s.etat;
-  document.getElementById("notes").value = s.notes || "";
-  document.getElementById("form-title").innerText = "Modifier / Détails";
-  document.getElementById("btnDeleteForm").style.display = "inline-block";
-  document.getElementById("form-overlay").style.display = "flex";
-};
-window.deleteStage = async (id) => {
-  if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
-};
-window.deleteStageFromForm = async () => {
-  const id = document.getElementById("docId").value;
-  if (isAdmin && id && confirm("Supprimer ?")) {
-    await deleteDoc(doc(db, "stages", id));
-    window.hideForm();
-  }
-};
-window.showForm = () => {
-  document.getElementById("form-overlay").style.display = "flex";
-  document.getElementById("form-title").innerText = "Ajouter";
-  document.getElementById("docId").value = "";
-  document.getElementById("stageForm").reset();
-  document.getElementById("btnDeleteForm").style.display = "none";
-};
-window.hideForm = () =>
-  (document.getElementById("form-overlay").style.display = "none");
-window.allowDrop = (ev) => ev.preventDefault();
-window.drag = (ev, id) => ev.dataTransfer.setData("text", id);
-window.drop = async (ev, newStatus) => {
-  ev.preventDefault();
-  if (!isAdmin) return;
-  const id = ev.dataTransfer.getData("text");
-  if (newStatus === "Entretien") newStatus = "Entretien";
-  try {
-    await updateDoc(doc(db, "stages", id), { etat: newStatus });
-  } catch (e) {}
-};
 function updateStats(stats) {
   const c = document.getElementById("stats-numbers");
-  c.innerHTML = `<div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div><div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR.</small></div></div><div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div><div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>`;
+  c.innerHTML = `
+        <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
+        <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div>
+        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
+    `;
   if (myChart) myChart.destroy();
   const ctx = document.getElementById("statsChart");
   let data = [
@@ -435,3 +199,191 @@ function updateStats(stats) {
     },
   });
 }
+
+// --- FILTRES ---
+const searchInput = document.getElementById("searchInput");
+const filterBtns = document.querySelectorAll(".filter-btn");
+let currentStatusFilter = "all";
+
+searchInput.addEventListener("input", applyFilters);
+filterBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    filterBtns.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentStatusFilter = btn.dataset.filter;
+    applyFilters();
+  });
+});
+
+function applyFilters() {
+  const term = searchInput.value.toLowerCase();
+  filteredStages = allStages.filter((s) => {
+    const matchText =
+      s.entreprise.toLowerCase().includes(term) ||
+      s.poste.toLowerCase().includes(term);
+    const matchStatus =
+      currentStatusFilter === "all" || s.etat === currentStatusFilter;
+    return matchText && matchStatus;
+  });
+  renderTable(filteredStages);
+}
+
+// --- RENDER TABLEAU ---
+function renderTable(stages) {
+  const tbody = document.getElementById("stages-table-body");
+  const today = new Date().toISOString().split("T")[0];
+  let html = "";
+
+  stages.forEach((stage) => {
+    let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
+
+    // Logique Date
+    if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
+      let daysCounter = "";
+      if (stage.dateEnvoi) {
+        const days = getDaysDiff(stage.dateEnvoi);
+        const color =
+          days > 14
+            ? "text-danger fw-bold"
+            : days > 7
+            ? "text-warning"
+            : "text-muted";
+        daysCounter = `<span class="${color} small ms-1">(${days}j)</span>`;
+      }
+      if (stage.dateRelance) {
+        if (stage.dateRelance < today)
+          dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance} ${daysCounter}</div>`;
+        else if (stage.dateRelance === today)
+          dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span> ${daysCounter}`;
+        else
+          dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance} ${daysCounter}</span>`;
+      } else if (daysCounter) {
+        dateHtml = `<span class="text-muted small">En cours ${daysCounter}</span>`;
+      }
+    } else {
+      if (stage.dateStatut) {
+        let color = "text-muted";
+        if (stage.etat === "Refusé") color = "text-danger";
+        if (stage.etat === "Validé") color = "text-success";
+        if (stage.etat === "Entretien") color = "text-info";
+        dateHtml = `<span class="${color} small fw-bold"><i class="bi bi-calendar-check"></i> ${stage.dateStatut}</span>`;
+      }
+    }
+
+    let badgeClass = "bg-warning text-dark bg-opacity-75";
+    if (stage.etat === "Validé") badgeClass = "bg-success";
+    if (stage.etat === "Refusé") badgeClass = "bg-danger";
+    if (stage.etat === "Entretien") badgeClass = "bg-info text-dark";
+    if (stage.etat === "Suite Entretien") badgeClass = "bg-primary text-white";
+
+    let links = "";
+    if (stage.lien)
+      links += `<a href="${stage.lien}" target="_blank" class="text-secondary me-2"><i class="bi bi-link-45deg"></i></a>`;
+    if (isAdmin && stage.lienMail)
+      links += `<a href="${stage.lienMail}" target="_blank" class="text-primary"><i class="bi bi-envelope-at-fill"></i></a>`;
+
+    let actions = isAdmin
+      ? `<div class="btn-group"><button class="btn btn-sm btn-outline-secondary btn-edit" onclick="editStage('${stage.id}')"><i class="bi bi-pencil-fill"></i></button><button class="btn btn-sm btn-outline-danger btn-delete" onclick="deleteStage('${stage.id}')"><i class="bi bi-trash-fill"></i></button></div>`
+      : "";
+
+    html += `<tr><td class="ps-3"><div class="fw-bold text-body">${stage.entreprise} ${links}</div><div class="small text-muted">${stage.poste}</div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actions}</td></tr>`;
+  });
+  tbody.innerHTML =
+    html ||
+    '<tr><td colspan="4" class="text-center py-4 text-muted">Aucun résultat.</td></tr>';
+}
+
+// --- EXPORT CSV ---
+document.getElementById("btnExport").addEventListener("click", () => {
+  if (allStages.length === 0) return alert("Rien à exporter !");
+  let csv =
+    "data:text/csv;charset=utf-8,\uFEFFEntreprise;Poste;Etat;Date Envoi;Date Relance;Date Retour;Lien;Mail;Notes\n";
+  allStages.forEach((r) => {
+    const c = (t) => {
+      if (!t) return "";
+      return '"' + t.toString().replace(/"/g, '""').replace(/\n/g, " ") + '"';
+    };
+    csv +=
+      [
+        c(r.entreprise),
+        c(r.poste),
+        c(r.etat),
+        c(r.dateEnvoi),
+        c(r.dateRelance),
+        c(r.dateStatut),
+        c(r.lien),
+        c(r.lienMail),
+        c(r.notes),
+      ].join(";") + "\n";
+  });
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csv));
+  link.setAttribute("download", "mes_stages.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
+
+// --- CRUD ---
+document.getElementById("stageForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!isAdmin) return;
+  const docId = document.getElementById("docId").value;
+  const stageData = {
+    entreprise: document.getElementById("entreprise").value,
+    poste: document.getElementById("poste").value,
+    lien: document.getElementById("lien").value,
+    lienMail: document.getElementById("lienMail").value,
+    dateEnvoi: document.getElementById("dateEnvoi").value,
+    dateRelance: document.getElementById("dateRelance").value,
+    dateStatut: document.getElementById("dateStatut").value,
+    etat: document.getElementById("etat").value,
+    notes: document.getElementById("notes").value,
+  };
+  try {
+    if (docId) await updateDoc(doc(db, "stages", docId), stageData);
+    else await addDoc(stagesCollection, stageData);
+    window.hideForm();
+  } catch (e) {
+    alert(e.message);
+  }
+});
+
+window.deleteStage = async (id) => {
+  if (isAdmin && confirm("Supprimer ?")) await deleteDoc(doc(db, "stages", id));
+};
+window.editStage = (id) => {
+  const s = allStages.find((x) => x.id === id);
+  if (!s) return;
+  document.getElementById("docId").value = s.id;
+  document.getElementById("entreprise").value = s.entreprise;
+  document.getElementById("poste").value = s.poste;
+  document.getElementById("lien").value = s.lien || "";
+  document.getElementById("lienMail").value = s.lienMail || "";
+  document.getElementById("dateEnvoi").value = s.dateEnvoi || "";
+  document.getElementById("dateRelance").value = s.dateRelance || "";
+  document.getElementById("dateStatut").value = s.dateStatut || "";
+  document.getElementById("etat").value = s.etat;
+  document.getElementById("notes").value = s.notes || "";
+  document.getElementById("form-title").innerText = "Modifier";
+  document.getElementById("form-card").style.display = "block";
+  window.scrollTo(0, 0);
+};
+window.showForm = () => {
+  document.getElementById("form-card").style.display = "block";
+  document.getElementById("form-title").innerText = "Ajouter";
+  document.getElementById("docId").value = "";
+  document.getElementById("stageForm").reset();
+  window.scrollTo(0, 0);
+};
+window.hideForm = () =>
+  (document.getElementById("form-card").style.display = "none");
+document.getElementById("dateEnvoi").addEventListener("change", function () {
+  if (this.value) {
+    const d = new Date(this.value);
+    d.setDate(d.getDate() + 7);
+    document.getElementById("dateRelance").value = d
+      .toISOString()
+      .split("T")[0];
+  }
+});
