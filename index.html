@@ -40,6 +40,10 @@
         display: flex;
         justify-content: center;
       }
+      /* Style pour masquer des éléments quand le mode visuel est actif */
+      .visual-hide {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
@@ -85,6 +89,16 @@
             </div>
           </div>
           <div class="d-flex gap-2">
+            <!-- NOUVEAU BOUTON VISUEL -->
+            <button
+              id="btnVisualMode"
+              class="btn btn-outline-primary btn-sm admin-feature"
+              title="Mode Visuel (Cacher Admin)"
+              style="display: none"
+            >
+              <i class="bi bi-eye"></i>
+            </button>
+
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-moon-stars-fill"></i>
             </button>
@@ -97,7 +111,7 @@
           </div>
         </div>
 
-        <!-- STATS (Nouveau Layout 6 cases) -->
+        <!-- STATS -->
         <div class="row mb-4 align-items-center justify-content-center">
           <div class="col-md-3 mb-3 mb-md-0">
             <div class="card shadow-sm p-2">
@@ -111,7 +125,7 @@
           </div>
         </div>
 
-        <!-- FILTRES -->
+        <!-- OUTILS -->
         <div class="row g-2 mb-3 align-items-center">
           <div class="col-md-4">
             <div class="input-group">
@@ -165,6 +179,7 @@
             </div>
           </div>
           <div class="col-md-2 text-end">
+            <!-- Bouton Nouveau (sera caché en mode visuel) -->
             <button
               onclick="showForm()"
               id="btnNouveau"

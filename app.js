@@ -17,9 +17,7 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// ==========================================
 // 🔴 CONFIGURATION
-// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
   authDomain: "mon-suivi-stage.firebaseapp.com",
@@ -38,6 +36,7 @@ const stagesCollection = collection(db, "stages");
 const provider = new GithubAuthProvider();
 
 let isAdmin = false;
+let isVisualMode = false; // NOUVEAU : État du mode visuel
 let allStages = [];
 let filteredStages = [];
 let myChart = null;
@@ -65,29 +64,56 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("app-content").style.display = "block";
 
-    if (user.photoURL)
-      document.getElementById("userAvatar").src = user.photoURL;
-    else
-      document.getElementById("userAvatar").src =
-        "https://ui-avatars.com/api/?name=Invité&background=random&color=fff";
-
-    const badge = document.getElementById("userStatus");
-    const btn = document.getElementById("btnNouveau");
+    const btnVisual = document.getElementById("btnVisualMode");
+    const btnNouveau = document.getElementById("btnNouveau");
 
     if (isAdmin) {
-      badge.className = "badge bg-primary";
-      badge.innerText = "Admin";
-      btn.classList.remove("admin-only");
+      // C'est l'Admin
+      if (user.photoURL)
+        document.getElementById("userAvatar").src = user.photoURL;
+      document.getElementById("userStatus").innerText = "Admin";
+      document.getElementById("userStatus").className = "badge bg-primary";
+
+      btnNouveau.classList.remove("admin-only");
+      btnVisual.style.display = "inline-block"; // Montrer le bouton Switch
     } else {
-      badge.className = "badge bg-secondary";
-      badge.innerText = "Invité (Lecture)";
-      btn.classList.add("admin-only");
+      // C'est un invité
+      document.getElementById("userAvatar").src =
+        "https://ui-avatars.com/api/?name=Invité&background=random&color=fff";
+      document.getElementById("userStatus").innerText = "Invité";
+      document.getElementById("userStatus").className = "badge bg-secondary";
+
+      btnNouveau.classList.add("admin-only");
+      btnVisual.style.display = "none"; // Cacher le bouton Switch
     }
+
     chargerDonnees();
   } else {
     document.getElementById("login-screen").style.display = "flex";
     document.getElementById("app-content").style.display = "none";
   }
+});
+
+// --- GESTION MODE VISUEL ---
+document.getElementById("btnVisualMode").addEventListener("click", () => {
+  isVisualMode = !isVisualMode; // On inverse l'état
+  const btn = document.getElementById("btnVisualMode");
+  const btnNouveau = document.getElementById("btnNouveau");
+
+  if (isVisualMode) {
+    // Activer le mode visuel (comme un invité)
+    btn.innerHTML = '<i class="bi bi-eye-slash-fill"></i>';
+    btn.className = "btn btn-primary btn-sm"; // Bouton devient bleu pour dire "actif"
+    btnNouveau.classList.add("visual-hide"); // On cache le bouton nouveau
+  } else {
+    // Revenir en mode Admin
+    btn.innerHTML = '<i class="bi bi-eye"></i>';
+    btn.className = "btn btn-outline-primary btn-sm";
+    btnNouveau.classList.remove("visual-hide"); // On remet le bouton nouveau
+  }
+
+  // On redessine le tableau avec le nouveau mode
+  renderTable(filteredStages.length > 0 ? filteredStages : allStages);
 });
 
 document
@@ -187,14 +213,12 @@ function chargerDonnees() {
   });
 }
 
-// --- NOUVELLE LAYOUT STATS (6 CASES) ---
 function updateStats(stats) {
   const c = document.getElementById("stats-numbers");
   c.innerHTML = `
         <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
-        
         <div class="col-4 mb-2"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE ENTR.</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-danger text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.refuse}</h4><small style="font-size:0.6em">REFUSÉ</small></div></div>
@@ -263,7 +287,6 @@ function applyFilters() {
   renderTable(filteredStages);
 }
 
-// --- RENDER TABLEAU (AVEC LOGIQUE INVITÉ) ---
 function renderTable(stages) {
   const tbody = document.getElementById("stages-table-body");
   const today = new Date().toISOString().split("T")[0];
@@ -272,9 +295,7 @@ function renderTable(stages) {
   stages.forEach((stage) => {
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
 
-    // Si En Attente ou Suite Entretien
     if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
-      // 1. Calcul des jours écoulés (Pour tout le monde)
       let daysCounter = "";
       let days = 0;
       if (stage.dateEnvoi) {
@@ -288,9 +309,12 @@ function renderTable(stages) {
         daysCounter = `<span class="${color} small ms-1">(${days}j)</span>`;
       }
 
-      // 2. Logique d'affichage différente Admin vs Invité
-      if (isAdmin) {
-        // ADMIN : Voit la date de relance précise et le bouton
+      // 🛑 LOGIQUE CRITIQUE : ADMIN vs VISUEL vs INVITÉ 🛑
+      // On affiche les détails SI Admin ET PAS en mode visuel
+      const showDetails = isAdmin && !isVisualMode;
+
+      if (showDetails) {
+        // ADMIN MODE COMPLET
         if (stage.dateRelance) {
           if (stage.dateRelance < today)
             dateHtml = `<button onclick="triggerRelance('${stage.id}')" class="btn btn-sm p-0 text-danger fw-bold border-0 bg-transparent"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance} ${daysCounter}</button>`;
@@ -301,11 +325,10 @@ function renderTable(stages) {
         } else if (daysCounter) {
           dateHtml = `<span class="text-muted small">En cours ${daysCounter}</span>`;
         }
-        // Historique admin
         if (stage.dateDerniereRelance)
           dateHtml += `<div class="text-muted small fst-italic" style="font-size:0.75em">Dernière: ${stage.dateDerniereRelance}</div>`;
       } else {
-        // INVITÉ : Ne voit PAS la date de relance, juste le temps d'attente
+        // INVITE OU MODE VISUEL (Version propre)
         if (days > 0) {
           dateHtml = `<span class="text-muted small"><i class="bi bi-hourglass-split"></i> Sans réponse depuis ${days} jours</span>`;
         } else {
@@ -313,7 +336,7 @@ function renderTable(stages) {
         }
       }
     } else {
-      // Autres états (Validé, Refusé, Entretien) : On affiche la date de l'événement pour tout le monde
+      // Autres états
       if (stage.dateStatut) {
         let color = "text-muted";
         if (stage.etat === "Refusé") color = "text-danger";
@@ -329,21 +352,37 @@ function renderTable(stages) {
     if (stage.etat === "Entretien") badgeClass = "bg-info text-dark";
     if (stage.etat === "Suite Entretien") badgeClass = "bg-primary text-white";
 
+    // Liens (Cachés en mode visuel aussi si tu veux, ici je laisse juste le mail caché)
     let links = "";
     if (stage.lien)
       links += `<a href="${stage.lien}" target="_blank" class="text-secondary me-2"><i class="bi bi-link-45deg"></i></a>`;
-    if (isAdmin && stage.lienMail)
+    if (isAdmin && !isVisualMode && stage.lienMail)
       links += `<a href="${stage.lienMail}" target="_blank" class="text-primary"><i class="bi bi-envelope-at-fill"></i></a>`;
 
-    let actions = isAdmin
-      ? `<div class="btn-group"><button class="btn btn-sm btn-outline-secondary btn-edit" onclick="editStage('${stage.id}')"><i class="bi bi-pencil-fill"></i></button><button class="btn btn-sm btn-outline-danger btn-delete" onclick="deleteStage('${stage.id}')"><i class="bi bi-trash-fill"></i></button></div>`
-      : "";
+    // Actions : Cacher si Invité OU Mode Visuel
+    let actions =
+      isAdmin && !isVisualMode
+        ? `<div class="btn-group"><button class="btn btn-sm btn-outline-secondary btn-edit" onclick="editStage('${stage.id}')"><i class="bi bi-pencil-fill"></i></button><button class="btn btn-sm btn-outline-danger btn-delete" onclick="deleteStage('${stage.id}')"><i class="bi bi-trash-fill"></i></button></div>`
+        : "";
 
     const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
       stage.entreprise
     )}&background=random&color=fff&size=40&rounded=true&bold=true&font-size=0.5`;
 
-    html += `<tr><td class="ps-3"><div class="d-flex align-items-center"><img src="${logoUrl}" class="me-3 shadow-sm" width="40" height="40" alt="Logo" style="border-radius: 8px;"><div><div class="fw-bold text-body">${stage.entreprise} ${links}</div><div class="small text-muted">${stage.poste}</div></div></div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actions}</td></tr>`;
+    html += `<tr>
+            <td class="ps-3">
+                <div class="d-flex align-items-center">
+                    <img src="${logoUrl}" class="me-3 shadow-sm" width="40" height="40" alt="Logo" style="border-radius: 8px;">
+                    <div>
+                        <div class="fw-bold text-body">${stage.entreprise} ${links}</div>
+                        <div class="small text-muted">${stage.poste}</div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td>
+            <td>${dateHtml}</td>
+            <td class="text-end pe-3">${actions}</td>
+          </tr>`;
   });
 
   tbody.innerHTML =
