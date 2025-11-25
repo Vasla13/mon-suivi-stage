@@ -139,6 +139,3 @@ service cloud.firestore {
 
 Projet développé par Eric Petersen dans le cadre de ma recherche de stage.
 🔗 Profil GitHub : https://github.com/Vasla13
-
-```bash
-git clone https://github.com/VOTRE-PSEUDO/mon-suivi-stage.git
