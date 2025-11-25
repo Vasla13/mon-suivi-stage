@@ -18,7 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ==========================================
-// 🔴 CONFIGURATION FIREBASE & UID
+// 🔴 CONFIGURATION
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCGMFmFQ8KIqJoj9zXzH194V8L5epRsBeg",
@@ -29,9 +29,7 @@ const firebaseConfig = {
   appId: "1:134252253002:web:fd5a8585299b6d58047bb3",
   measurementId: "G-GL4HPEBLRW",
 };
-
 const ADMIN_UID = "fAQazTtXxgWQXf8snjT6BankcUK2";
-// ==========================================
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -71,7 +69,7 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById("userAvatar").src = user.photoURL;
     else
       document.getElementById("userAvatar").src =
-        "https://ui-avatars.com/api/?name=Invité&background=random";
+        "https://ui-avatars.com/api/?name=Invité&background=random&color=fff";
 
     const badge = document.getElementById("userStatus");
     const btn = document.getElementById("btnNouveau");
@@ -114,6 +112,24 @@ function getDaysDiff(dateString) {
   const diffTime = Math.abs(now - date);
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
+
+window.triggerRelance = async (id) => {
+  if (!isAdmin) return;
+  const today = new Date().toISOString().split("T")[0];
+  const dateAction = prompt("Date de la relance ?", today);
+  if (dateAction) {
+    const d = new Date(dateAction);
+    d.setDate(d.getDate() + 7);
+    try {
+      await updateDoc(doc(db, "stages", id), {
+        dateDerniereRelance: dateAction,
+        dateRelance: d.toISOString().split("T")[0],
+      });
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+};
 
 // --- DATA ---
 function chargerDonnees() {
@@ -162,7 +178,6 @@ function chargerDonnees() {
       if (isPrioA && !isPrioB) return -1;
       if (!isPrioA && isPrioB) return 1;
       if (a.dateRelance && !b.dateRelance) return -1;
-      if (!a.dateRelance && b.dateRelance) return 1;
       return 0;
     });
 
@@ -172,15 +187,19 @@ function chargerDonnees() {
   });
 }
 
+// --- NOUVELLE LAYOUT STATS (6 CASES) ---
 function updateStats(stats) {
   const c = document.getElementById("stats-numbers");
   c.innerHTML = `
         <div class="col-4 mb-2"><div class="p-2 bg-primary text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.total}</h4><small style="font-size:0.6em">TOTAL</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-body-tertiary border border-warning text-warning rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.attente}</h4><small style="font-size:0.6em">ATTENTE</small></div></div>
         <div class="col-4 mb-2"><div class="p-2 bg-info text-dark rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.entretien}</h4><small style="font-size:0.6em">ENTR. PRÉVU</small></div></div>
-        <div class="col-6"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE</small></div></div>
-        <div class="col-6"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
+        
+        <div class="col-4 mb-2"><div class="p-2 text-white rounded shadow-sm" style="background-color: #6610f2;"><h4 class="m-0 fw-bold">${stats.suite}</h4><small style="font-size:0.6em">SUITE ENTR.</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-success text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.valide}</h4><small style="font-size:0.6em">VALIDÉ</small></div></div>
+        <div class="col-4 mb-2"><div class="p-2 bg-danger text-white rounded shadow-sm"><h4 class="m-0 fw-bold">${stats.refuse}</h4><small style="font-size:0.6em">REFUSÉ</small></div></div>
     `;
+
   if (myChart) myChart.destroy();
   const ctx = document.getElementById("statsChart");
   let data = [
@@ -244,6 +263,7 @@ function applyFilters() {
   renderTable(filteredStages);
 }
 
+// --- RENDER TABLEAU (AVEC LOGIQUE INVITÉ) ---
 function renderTable(stages) {
   const tbody = document.getElementById("stages-table-body");
   const today = new Date().toISOString().split("T")[0];
@@ -252,10 +272,13 @@ function renderTable(stages) {
   stages.forEach((stage) => {
     let dateHtml = '<span class="text-muted text-opacity-50 small">-</span>';
 
+    // Si En Attente ou Suite Entretien
     if (stage.etat === "En attente" || stage.etat === "Suite Entretien") {
+      // 1. Calcul des jours écoulés (Pour tout le monde)
       let daysCounter = "";
+      let days = 0;
       if (stage.dateEnvoi) {
-        const days = getDaysDiff(stage.dateEnvoi);
+        days = getDaysDiff(stage.dateEnvoi);
         const color =
           days > 14
             ? "text-danger fw-bold"
@@ -264,17 +287,33 @@ function renderTable(stages) {
             : "text-muted";
         daysCounter = `<span class="${color} small ms-1">(${days}j)</span>`;
       }
-      if (stage.dateRelance) {
-        if (stage.dateRelance < today)
-          dateHtml = `<div class="text-danger fw-bold small"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance} ${daysCounter}</div>`;
-        else if (stage.dateRelance === today)
-          dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span> ${daysCounter}`;
-        else
-          dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance} ${daysCounter}</span>`;
-      } else if (daysCounter) {
-        dateHtml = `<span class="text-muted small">En cours ${daysCounter}</span>`;
+
+      // 2. Logique d'affichage différente Admin vs Invité
+      if (isAdmin) {
+        // ADMIN : Voit la date de relance précise et le bouton
+        if (stage.dateRelance) {
+          if (stage.dateRelance < today)
+            dateHtml = `<button onclick="triggerRelance('${stage.id}')" class="btn btn-sm p-0 text-danger fw-bold border-0 bg-transparent"><i class="bi bi-exclamation-circle-fill"></i> Relance: ${stage.dateRelance} ${daysCounter}</button>`;
+          else if (stage.dateRelance === today)
+            dateHtml = `<span class="badge bg-warning text-dark border border-dark">Relance: AUJ.</span> ${daysCounter}`;
+          else
+            dateHtml = `<span class="text-secondary small"><i class="bi bi-clock"></i> Relance: ${stage.dateRelance} ${daysCounter}</span>`;
+        } else if (daysCounter) {
+          dateHtml = `<span class="text-muted small">En cours ${daysCounter}</span>`;
+        }
+        // Historique admin
+        if (stage.dateDerniereRelance)
+          dateHtml += `<div class="text-muted small fst-italic" style="font-size:0.75em">Dernière: ${stage.dateDerniereRelance}</div>`;
+      } else {
+        // INVITÉ : Ne voit PAS la date de relance, juste le temps d'attente
+        if (days > 0) {
+          dateHtml = `<span class="text-muted small"><i class="bi bi-hourglass-split"></i> Sans réponse depuis ${days} jours</span>`;
+        } else {
+          dateHtml = `<span class="text-muted small">Envoi récent</span>`;
+        }
       }
     } else {
+      // Autres états (Validé, Refusé, Entretien) : On affiche la date de l'événement pour tout le monde
       if (stage.dateStatut) {
         let color = "text-muted";
         if (stage.etat === "Refusé") color = "text-danger";
@@ -300,25 +339,11 @@ function renderTable(stages) {
       ? `<div class="btn-group"><button class="btn btn-sm btn-outline-secondary btn-edit" onclick="editStage('${stage.id}')"><i class="bi bi-pencil-fill"></i></button><button class="btn btn-sm btn-outline-danger btn-delete" onclick="deleteStage('${stage.id}')"><i class="bi bi-trash-fill"></i></button></div>`
       : "";
 
-    // LOGO AUTOMATIQUE
     const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
       stage.entreprise
     )}&background=random&color=fff&size=40&rounded=true&bold=true&font-size=0.5`;
 
-    html += `<tr>
-            <td class="ps-3">
-                <div class="d-flex align-items-center">
-                    <img src="${logoUrl}" class="me-3 shadow-sm" width="40" height="40" alt="Logo" style="border-radius: 8px;">
-                    <div>
-                        <div class="fw-bold text-body">${stage.entreprise} ${links}</div>
-                        <div class="small text-muted">${stage.poste}</div>
-                    </div>
-                </div>
-            </td>
-            <td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td>
-            <td>${dateHtml}</td>
-            <td class="text-end pe-3">${actions}</td>
-          </tr>`;
+    html += `<tr><td class="ps-3"><div class="d-flex align-items-center"><img src="${logoUrl}" class="me-3 shadow-sm" width="40" height="40" alt="Logo" style="border-radius: 8px;"><div><div class="fw-bold text-body">${stage.entreprise} ${links}</div><div class="small text-muted">${stage.poste}</div></div></div></td><td><span class="badge ${badgeClass} fw-normal">${stage.etat}</span></td><td>${dateHtml}</td><td class="text-end pe-3">${actions}</td></tr>`;
   });
 
   tbody.innerHTML =
