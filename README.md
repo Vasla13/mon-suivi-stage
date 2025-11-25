@@ -1,63 +1,144 @@
-# 🚀 Mon Suivi de Stage (Internship Tracker)
-
-Une application web moderne "Serverless" pour suivre efficacement ses candidatures de stage, gérer les relances et analyser ses statistiques.
+# 🚀 **Hub de Suivi de Stage**
 
 ![Statut du projet](https://img.shields.io/badge/Status-Actif-success)
 ![Sécurité](https://img.shields.io/badge/Security-Firebase_Auth-blue)
 ![Hébergement](https://img.shields.io/badge/Host-GitHub_Pages-lightgrey)
 
-## 📋 Présentation
-
-Ce projet est né du besoin d'organiser ma recherche de stage. Plutôt que d'utiliser un fichier Excel classique, j'ai développé une application web complète qui permet de centraliser toutes les informations, avec un système de rappel intelligent pour les relances.
-
-L'application est sécurisée : seul l'administrateur (moi) peut modifier les données, tandis que les visiteurs peuvent consulter le tableau de bord en mode "Lecture seule".
-
-### ✨ Fonctionnalités Principales
-
-* **Gestion CRUD complète** : Ajouter, Modifier, Supprimer des candidatures.
-* **Tableau de Bord** : Statistiques en temps réel (Total, En attente, Entretiens, Validés).
-* **Calcul Intelligent des Dates** : Calcul automatique de la date de relance (J+7) dès la saisie de la date d'envoi.
-* **Système d'Alertes Visuelles** :
-    * 🔴 Rouge : Relance en retard.
-    * 🟠 Orange : Relance à faire aujourd'hui.
-    * ⚪ Gris : Relance future.
-* **Authentification GitHub** : Connexion sécurisée sans mot de passe via OAuth.
-* **Gestion des Rôles (RBAC)** :
-    * 👑 **Admin** : Accès complet (Écriture/Lecture).
-    * 👀 **Guest** : Accès visiteur (Lecture seule, boutons d'action masqués).
-* **Responsive** : Interface adaptée mobile et desktop (Bootstrap 5).
+Une application web moderne **Serverless** conçue pour optimiser la recherche de stage, centraliser les candidatures et automatiser le suivi des relances.
 
 ---
 
-## 🛠️ Stack Technique
+## 📋 **Présentation**
 
-Ce projet utilise une architecture **Serverless**.
+**Hub de Suivi de Stage** transforme un simple tableau Excel en une véritable **application web intelligente**.  
+Elle offre une vue claire et dynamique de toutes les candidatures, des relances à effectuer, et des statistiques en temps réel.
 
-* **Frontend** : HTML5, CSS3, JavaScript (ES6 Modules).
-* **Framework UI** : Bootstrap 5.3 + Bootstrap Icons.
-* **Backend (BaaS)** : Google Firebase Firestore (Base de données NoSQL temps réel).
-* **Authentification** : Firebase Authentication (Provider GitHub).
-* **Hébergement** : GitHub Pages.
+### 👥 Double Authentification & Rôles
+
+- **👑 Admin (Moi)**  
+  → Accès complet : Ajout, Modification, Suppression, Validation des relances  
+- **👀 Visiteur (Recruteur / Ami)**  
+  → Accès lecture seule sécurisé, données sensibles masquées
 
 ---
 
-## 🔒 Sécurité & Architecture
+## ✨ **Fonctionnalités Clés**
 
-La sécurité repose sur deux niveaux :
+### 🧠 **Intelligence & Automatisation**
 
-1.  **Côté Client (UX)** : Le JavaScript détecte l'UID de l'utilisateur connecté. Si ce n'est pas l'UID de l'administrateur, l'interface masque les boutons d'édition et passe en mode "Invité".
-2.  **Côté Serveur (Firestore Rules)** : Les règles de sécurité Firebase bloquent physiquement toute tentative d'écriture venant d'un autre utilisateur que l'admin.
+- **Auto-Refus (21 jours)** : Les candidatures sans réponse passent automatiquement en *Refusé* après 21 jours.  
+- **Relance Automatique** : La prochaine relance est générée automatiquement **J+7** après l’envoi.  
+- **Compteur de Jours** : Affichage dynamique du délai (ex : **(5j)**, **(13j)**).
 
-**Extrait des règles de sécurité Firestore :**
-```javascript
+---
+
+## 📊 **Tableau de Bord & Interface**
+
+- **Graphique Interactif** : Diagramme en beignet mis à jour en temps réel (Chart.js)  
+- **Mode Sombre Premium** : Design moderne gris anthracite  
+- **Logos Automatiques** : Avatars générés selon le nom de l’entreprise  
+- **Filtres Dynamiques** : Recherche instantanée par nom, ville, statut  
+
+---
+
+## 🛡️ **Sécurité & Gestion des Accès**
+
+- **Authentification GitHub OAuth**  
+- **Mode Invité Anonyme**  
+- **Protection des Données**
+  - Emails visibles **uniquement** par l’Admin  
+  - Boutons d’action masqués pour les invités  
+  - Dates précises de relance cachées pour les invités  
+  - Affichage simplifié : *"Sans réponse depuis X jours"*  
+
+---
+
+## 💾 **Export & Données**
+
+- **Export CSV instantané** (format Excel ; séparateur `;`)  
+- **Persistance Cloud** via **Google Firestore (NoSQL temps réel)**  
+
+---
+
+## 🛠️ **Stack Technique**
+
+- **Frontend** : HTML5, CSS3, JavaScript (ES6 Modules)  
+- **UI** : Bootstrap 5 + Bootstrap Icons  
+- **Backend Serverless** : Google Firebase  
+- **Base de données** : Firestore  
+- **Auth** : GitHub + Anonyme  
+- **Graphiques** : Chart.js  
+- **Hébergement** : GitHub Pages  
+
+---
+
+## ⚙️ **Installation (Développeurs)**
+
+### 🔧 1. Cloner le dépôt
+git clone https://github.com/VOTRE-PSEUDO/mon-suivi-stage.git
+
+🔧 2. Configurer Firebase
+
+Créer un projet sur Firebase Console
+
+Activer :
+
+Firestore Database
+
+Authentication → GitHub + Anonyme
+
+Ajouter les clés dans app.js :
+
+const firebaseConfig = {
+  apiKey: "VOTRE_API_KEY",
+  // ...
+};
+
+🔧 3. Définir l'Administrateur
+const ADMIN_UID = "VOTRE_UID_ADMIN";
+
+
+Récupérable dans : Firebase → Authentication → UID utilisateur.
+
+🔧 4. Déploiement sur GitHub Pages
+
+Paramètres → Pages
+
+Source : main
+
+Le site est automatiquement publié.
+
+🔒 Règles de Sécurité Firestore
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      // Tout le monde peut voir (Portfolio)
+
+      // Tout utilisateur connecté (invité ou admin) peut lire
       allow read: if request.auth != null;
-      // Seul l'admin peut toucher aux données
-      allow write: if request.auth.uid == "MON_UID_ADMIN_SECRET";
+      
+      // Seul l'admin peut modifier les données
+      allow write: if request.auth.uid == "UID_DE_L_ADMIN";
     }
   }
 }
+
+📸 Aperçu des Statuts
+
+🟡 En attente
+
+🔵 Entretien prévu
+
+🟣 Suite Entretien
+
+🟢 Validé
+
+🔴 Refusé
+
+👤 Auteur
+
+Projet développé par Eric Petersen dans le cadre de ma recherche de stage.
+🔗 Profil GitHub : https://github.com/Vasla13
+
+```bash
+git clone https://github.com/VOTRE-PSEUDO/mon-suivi-stage.git
