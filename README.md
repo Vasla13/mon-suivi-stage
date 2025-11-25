@@ -75,7 +75,7 @@ Elle offre une vue claire et dynamique de toutes les candidatures, des relances 
 ## ⚙️ **Installation (Développeurs)**
 
 ### 🔧 1. Cloner le dépôt
-git clone https://github.com/VOTRE-PSEUDO/mon-suivi-stage.git
+git clone https://github.com/Vasla13/mon-suivi-stage.git
 
 🔧 2. Configurer Firebase
 
